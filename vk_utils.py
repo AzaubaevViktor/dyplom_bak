@@ -1,6 +1,30 @@
+import json
 import random
+from time import sleep
 
 import vk
+from vk import API as VkAPI
+from vk.api import Request as VkRequest
+from vk.exceptions import VkAPIError
+
+
+class API(VkAPI):
+    def __getattr__(self, method_name):
+        return Request(self, method_name)
+
+
+class Request(VkRequest):
+    def __getattr__(self, method_name):
+        return Request(self._api, self._method_name + '.' + method_name)
+
+    def __call__(self, *args, **kwargs):
+        while True:
+            try:
+                return super().__call__(*args, **kwargs)
+            except VkAPIError as e:
+                if 6 == e.code:
+                    print(e.message)
+                    sleep(0.33)
 
 
 def address_to_dict(addr: str) -> dict:
@@ -37,7 +61,7 @@ class VkInit:
     def api(self):
         if not self._api:
             self._session = vk.Session(access_token=self.token)
-            self._api = vk.API(self._session)
+            self._api = API(self._session, v='5.60', lang='ru')
         return self._api
 
     def disconnect(self):
@@ -62,5 +86,22 @@ class VkInit:
             except Exception:
                 print("Неверный адрес. Попробуй ещё раз!")
         return data['access_token']
+
+
+class Group:
+    def __init__(self, _id: int or str):
+        self.members_count = -1
+        self._id = _id
+
+    def get_members(self, api: API):
+        count = 0
+        while self.members_count == -1 or count < self.members_count:
+            data = api.groups.getMembers(group_id=self._id, offset=count, count=1000)
+            print(count)
+            ids = data['items']
+            self.members_count = data['count']
+            count += len(ids)
+            for _id in ids:
+                yield _id
 
 
