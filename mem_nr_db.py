@@ -20,6 +20,15 @@ class MemNRDB:
         self.tables[table_name] = Table(table_name)
 
 
+def _apply_class(row: dict, to_class: bool or 'Row'):
+    if to_class is False:
+        return row
+    elif to_class is True:
+        return Row(row)
+    elif isinstance(to_class, Row):
+        return to_class.__init__(row)
+
+
 class Table:
     def __init__(self, name, convert=True):
         self.name = name
@@ -39,14 +48,14 @@ class Table:
                     except Exception:
                         pass
             # check index
-            if "__id__" in row:
-                _id = row['__id__']
+            if "id" in row:
+                _id = row['id']
                 if _id in self.meta_data:
                     raise DBException("Запись с данным id ({}) уже есть в таблице".format(_id))
             else:
                 while self.index_count in self.meta_data:
                     self.index_count += 1
-                _id = row["__id__"] = self.index_count
+                _id = row["id"] = self.index_count
             # add row in table
             self.data.append(row)
             self.meta_data[_id] = row
@@ -54,16 +63,47 @@ class Table:
             raise DBException("Запись должна быть типа dict, получено: {}".format(type(row)))
         return row
 
-    def rows(self):
-        for row in self.data:
-            yield row
+    def update(self, row: dict):
+        if isinstance(row, dict):
+            if 'id' in row:
+                old_data = self.get(row['id'])
+                old_data.update(row)
+                return old_data
+            else:
+                raise DBException("Для обновления необходим id записи")
+        else:
+            raise DBException("Запись должна быть типа dict, получено: {}".format(type(row)))
 
-    def get(self, _id: int):
-        return self.meta_data[_id]
+    def rows(self, to_class: bool or 'Row'=False):
+        for row in self.data:
+            yield _apply_class(row, to_class)
+
+    def get(self, _id: int, to_class: bool or 'Row'=False):
+        try:
+            return _apply_class(self.meta_data[_id], to_class)
+        except KeyError:
+            raise DBException("Элемента с таким id ({}) не найдено".format(_id))
 
     def query(self, q: "Query"):
         q.table = self
         return q
+
+
+class Row:
+    def __init__(self, raw: dict):
+        self.data = raw
+
+    def _get_raw_data(self):
+        return self.data
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __getattr__(self, item):
+        return self.data[item]
+
+    def __delete__(self, instance):
+        return NotImplemented
 
 
 class Query:
@@ -81,7 +121,7 @@ class Query:
         else:
             return None
 
-    def all(self, table: "Table" = None):
+    def all(self, table: "Table" = None, to_class: bool or Row=False):
         if self.table and table:
             raise DBException("Таблица уже задана")
         table = table or self.table
@@ -89,10 +129,10 @@ class Query:
         for row in table.rows():
             r = self(row)
             if r is not None:
-                yield r
+                yield _apply_class(r, to_class)
 
-    def limit(self, count: int, table: "Table" = None):
-        for row in self.all(table=table):
+    def limit(self, count: int, table: "Table" = None, to_class: bool or Row=False):
+        for row in self.all(table=table, to_class=to_class):
             yield row
             count -= 1
             if 0 == count:

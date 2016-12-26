@@ -1,6 +1,6 @@
 import unittest
 
-from mem_nr_db import Query, QueryLogic, MemNRDB, Table, DBException
+from mem_nr_db import Query, QueryLogic, MemNRDB, Table, DBException, Row
 
 
 class TestDB(unittest.TestCase):
@@ -105,19 +105,55 @@ class TestDB(unittest.TestCase):
         db.create_table("tost")
 
         t = db['tost']
-        row2 = t.insert({"__id__": 2})
+        row2 = t.insert({"id": 2})
         row1 = t.insert({"hello": "world"})
         row3 = t.insert({"world": "hello"})
 
-        self.assertEqual(row1['__id__'], 1)
-        self.assertEqual(row2['__id__'], 2)
-        self.assertEqual(row3['__id__'], 3)
+        self.assertEqual(row1['id'], 1)
+        self.assertEqual(row2['id'], 2)
+        self.assertEqual(row3['id'], 3)
 
         with self.assertRaises(DBException):
-            t.insert({"__id__": 3})
+            t.insert({"id": 3})
 
+    def test_update(self):
+        db = MemNRDB()
+        db.create_table("tost")
 
+        t = db['tost']
+        row2 = t.insert({"id": 2})
+        row1 = t.insert({"hello": "world", "zzz": "xxx"})
+        row3 = t.insert({"world": "hello"})
 
+        with self.assertRaises(DBException):
+            t.update({"id": 4, "val": 123})
+
+        t.update({"id": 1, "hello": "WORLD", "xxx": "zzz"})
+        row = t.get(1)
+        self.assertEqual(row['id'], 1)
+        self.assertEqual(row['hello'], "WORLD")
+        self.assertEqual(row['zzz'], "xxx")
+        self.assertEqual(row['xxx'], "zzz")
+
+    def test_row(self):
+        db = MemNRDB()
+        db.create_table("tost")
+
+        t = db['tost']
+        t.insert({
+            "id": 2,
+            "test": "value",
+            (1, 2): (3, 4),
+            12: 34
+        })
+
+        row = t.get(2, to_class=True)
+        self.assertIsInstance(row, Row)
+        self.assertEqual(row.id, 2)
+        self.assertEqual(row.test, "value")
+        self.assertEqual(row[12], 34)
+        self.assertEqual(row[1, 2], (3, 4))
+        self.assertIsInstance(row._get_raw_data(), dict)
 
 
 if __name__ == '__main__':
