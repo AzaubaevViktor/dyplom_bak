@@ -1,7 +1,4 @@
 import os
-import random
-
-import vk
 
 from vk_utils import VkInit
 
@@ -12,8 +9,5 @@ TOKEN_FILE = os.environ["TOKEN_FILE"]
 vk_init = VkInit(APP_ID, TOKEN_FILE)
 api = vk_init.api
 print(api.users.get(user_ids=[0]))
-
-
-
 
 
