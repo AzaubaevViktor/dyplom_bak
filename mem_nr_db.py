@@ -109,8 +109,8 @@ def _apply_class(row: dict, to_class: bool or 'Row'):
         return row
     elif to_class is True:
         return Row(row)
-    elif isinstance(to_class, Row):
-        return to_class.__init__(row)
+    else:
+        return to_class(row)
 
 
 class Table:
@@ -213,6 +213,10 @@ class Row:
 
 
 class Query:
+    @classmethod
+    def ANY(cls):
+        return QueryAny(None)
+
     def __init__(self, name, table: "Table" = None):
         self.path = name.split(".") if isinstance(name, str) else [name]
         self.method_name = "_exist_field"
@@ -308,6 +312,11 @@ class Query:
     def is_not(self, other) -> "Query":
         # TODO: разобраться, почему не работает
         return self._comparsion_filter_generator("__is_not__", other)
+
+
+class QueryAny(Query):
+    def _check(self, row: dict):
+        return True
 
 
 class QueryLogic(Query):

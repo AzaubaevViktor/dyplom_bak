@@ -1,10 +1,14 @@
 import argparse
+import datetime
 import json
 import os
+import sys
 
-from mem_nr_db import MemNRDB, DBException
+import time
 
-from vk_utils import VkInit, Group, get_users
+from mem_nr_db import MemNRDB, DBException, Query
+
+from vk_utils import VkInit, Group, get_users, User, get_wall_posts
 
 APP_ID = os.environ['APP_ID']
 APP_KEY = os.environ["APP_KEY"]
@@ -59,15 +63,42 @@ if namespace.load_from_groups:
             print("{} ids come".format(len(ids)))
             for user in get_users(api, ids):
                 user.cost["group_{}".format(group_name)] = cost
-                user.load_to_table(t)
+                user.load_to(t)
             print("OK")
         print("Done! Saving...")
         db.serialize("db.json")
         print("Saved")
 
+start = time.time()
 if namespace.online:
     print("Online mode")
-    print(t)
+    print("===============================")
+    user_count = 0
+    ids = []
+    for user in t.query(Query.ANY()).all(to_class=User):  # type: User
+        user_count += 1
+        ids.append(user.id)
+        if 25 == len(ids):
+            for dt, text, likes, reposts in get_wall_posts(api, ids, 2, start):
+                print("{}:".format(str(user)))
+                print(" {}; {}/{}".format(
+                    datetime.datetime.fromtimestamp(
+                        int(dt)
+                    ).strftime('%d.%m.%Y %H:%M:%S'),
+                    likes,
+                    reposts
+                ))
+                print(" {}".format(text))
+                print("-------------------------------")
+            print("{} by {} sec, {} user/sec (last_id:{})\n".format(
+                user_count,
+                time.time() - start,
+                user_count / (time.time() - start),
+                ids[-1]
+            ))
+
+            time.sleep(1)
+            ids = []
 
 
 

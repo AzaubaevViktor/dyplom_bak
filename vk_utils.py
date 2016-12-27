@@ -1,4 +1,3 @@
-import json
 import random
 from time import sleep
 
@@ -26,7 +25,7 @@ class Request(VkRequest):
             except VkAPIError as e:
                 if 6 == e.code:
                     print(e.message)
-                    sleep(0.33)
+                    sleep(1)
 
 
 def address_to_dict(addr: str) -> dict:
@@ -106,20 +105,42 @@ class Group:
             yield ids
 
 
+def get_wall_posts(api: API, ids: list, count: int, from_time=-1):
+    # TODO: переделать ids на users
+    answer = api.execute.wallWatch(
+        id_list=ids,
+        count=count
+    )
+    for posts in answer:
+        if posts:
+            for item in posts:
+                dt = item['date']
+                text = item['text']
+                likes = item['likes']['count']
+                reposts = item['reposts']['count']
+
+                if -1 != from_time and dt > from_time:
+                    yield dt, text, likes, reposts
+
+
 class User:
     def __init__(self, row: dict):
         self.row = row
         if 'cost' not in self.row:
             self.row['cost'] = {}
 
+    @property
+    def id(self):
+        return self.row['id']
+
     def get_friends(self):
         return NotImplemented
 
-    def load_to_table(self, table: Table):
+    def load_to(self, table: Table):
         table.ins_upd(self.row)
 
     @classmethod
-    def load(cls, table: Table, _id: int):
+    def load_from(cls, table: Table, _id: int):
         return User(table.get(_id))
 
     @property
@@ -130,6 +151,13 @@ class User:
     def cost(self, value):
         self.row['cost'] = value
 
+    def __str__(self):
+        return "<User#{}>: {} {}".format(
+            self.id,
+            self.row.get('first_name', "---"),
+            self.row.get('second_name', "---")
+        )
+
 
 def get_users(api, ids: int or list):
     users_data = api.users.get(
@@ -138,5 +166,3 @@ def get_users(api, ids: int or list):
     )
     for user_data in users_data:
         yield User(user_data)
-
-
