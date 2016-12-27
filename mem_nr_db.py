@@ -211,7 +211,7 @@ class Row:
 
 class Query:
     def __init__(self, name, table: "Table" = None):
-        self.name = name
+        self.path = name.split(".") if isinstance(name, str) else [name]
         self.method_name = "_exist_field"
         self.test = None
         self.table = table
@@ -242,14 +242,23 @@ class Query:
                 return
 
     def _exist_field(self, row):
-        return self.name in row
+        return self._get_val_by_path(row) is not None
+
+    def _get_val_by_path(self, row):
+        _row = row
+        for p in self.path:
+            if p in _row:
+                _row = _row[p]
+            else:
+                return None
+        return _row
 
     def _check(self, row: dict) -> bool:
         if self._exist_field(row):
             if self.test is None:
                 return True
             else:
-                val = row[self.name]
+                val = self._get_val_by_path(row)
                 res = getattr(val, self.method_name)(self.test)
                 if NotImplemented == res:
                     return False
