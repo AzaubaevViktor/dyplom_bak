@@ -55,7 +55,7 @@ def db_json_hook(dct):
         tables = dct['__tables__']
         db = MemNRDB()
         for table_name, table_data in tables.items():
-            table = db.create_table(table_name)
+            table = db.init_table(table_name)
             for row in table_data:
                 table.insert(row)
         return db
@@ -72,9 +72,12 @@ class MemNRDB:
         except KeyError:
             raise DBException("Не найдена таблица с именем {}".format(table_name))
 
-    def create_table(self, table_name: str):
-        t = Table(table_name)
-        self.tables[table_name] = t
+    def init_table(self, table_name: str):
+        if table_name in self.tables:
+            t = self.tables[table_name]
+        else:
+            t = Table(table_name)
+            self.tables[table_name] = t
         return t
 
     def __str__(self):

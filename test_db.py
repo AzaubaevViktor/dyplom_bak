@@ -78,7 +78,7 @@ class TestDB(unittest.TestCase):
 
     def test_db_query(self):
         db = MemNRDB()
-        db.create_table("test")
+        db.init_table("test")
         self.assertIsInstance(db['test'], Table)
 
         with self.assertRaises(DBException):
@@ -102,7 +102,7 @@ class TestDB(unittest.TestCase):
 
     def test_db_index(self):
         db = MemNRDB()
-        db.create_table("tost")
+        db.init_table("tost")
 
         t = db['tost']
         row2 = t.insert({"id": 2})
@@ -118,7 +118,7 @@ class TestDB(unittest.TestCase):
 
     def test_update(self):
         db = MemNRDB()
-        db.create_table("tost")
+        db.init_table("tost")
 
         t = db['tost']
         row2 = t.insert({"id": 2})
@@ -137,7 +137,7 @@ class TestDB(unittest.TestCase):
 
     def test_row(self):
         db = MemNRDB()
-        db.create_table("tost")
+        db.init_table("tost")
 
         t = db['tost']
         t.insert({
@@ -157,7 +157,7 @@ class TestDB(unittest.TestCase):
 
     def test_assert(self):
         db = MemNRDB()
-        db.create_table("tost")
+        db.init_table("tost")
 
         t = db['tost']
         with self.assertRaises(DBTypeError):
@@ -165,12 +165,12 @@ class TestDB(unittest.TestCase):
 
     def test_serialize(self):
         db = MemNRDB()
-        t = db.create_table("tost")
+        t = db.init_table("tost")
 
         t.insert({"a": 12})
         t.insert({"бля": 23})
 
-        tt = db.create_table("test")
+        tt = db.init_table("test")
 
         tt.insert({"c": 34})
         tt.insert({"d": 45})

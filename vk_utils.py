@@ -110,7 +110,7 @@ class User:
     def __init__(self, row: dict):
         self.row = row
         if 'cost' not in self.row:
-            self.row['cost'] = 0
+            self.row['cost'] = {}
 
     def get_friends(self):
         return NotImplemented
