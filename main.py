@@ -1,7 +1,9 @@
 import json
 import os
 
-from vk_utils import VkInit, Group
+from mem_nr_db import MemNRDB
+
+from vk_utils import VkInit, Group, get_users
 
 APP_ID = os.environ['APP_ID']
 APP_KEY = os.environ["APP_KEY"]
@@ -17,9 +19,22 @@ print("Load settings...")
 
 settings = json.loads(open(SETTINGS, "rt").read())
 
+db = MemNRDB()
+t = db.create_table('users')
+
 for group_name, cost in settings['groups'].items():
     group = Group(group_name)
-    for _id in group.get_members(api):
-        pass
+    print(group_name)
+    for ids in group.get_members(api):
+        print("{} ids come".format(len(ids)))
+        for user in get_users(api, ids):
+            user.cost += cost
+            user.load_to_table(t)
+        print("Done!")
+
+pass
+print(t)
+
+
 
 

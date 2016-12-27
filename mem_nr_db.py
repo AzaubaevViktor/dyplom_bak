@@ -6,6 +6,38 @@ class DBException(Exception):
         return self.msg
 
 
+class DBIndexError(DBException):
+    def __init__(self, table: 'Table', operation: str, msg: str):
+        self.table = table
+        self.operation = operation
+        self.msg = msg
+
+    def __str__(self):
+        return "DBIndexError в таблице `{}` во время операции `{}`: {}".format(
+            self.table.name,
+            self.operation,
+            self.msg
+        )
+
+
+class DBTypeError(DBException):
+    def __init__(self, table: 'Table', operation: str, obj_name: str, obj: object, need_type: type):
+        self.table = table
+        self.operation = operation
+        self.obj_name = obj_name
+        self.obj = obj
+        self.need_type = need_type
+
+    def __str__(self):
+        return "DBTypeError в таблице `{}` во время операции `{}`: у переменной `{}` ожидается тип `{}`, получен `{}`".format(
+            self.table.name,
+            self.operation,
+            self.obj_name,
+            type(self.obj),
+            self.need_type
+        )
+
+
 class MemNRDB:
     def __init__(self):
         self.tables = {}
@@ -17,7 +49,12 @@ class MemNRDB:
             raise DBException("Не найдена таблица с именем {}".format(table_name))
 
     def create_table(self, table_name: str):
-        self.tables[table_name] = Table(table_name)
+        t = Table(table_name)
+        self.tables[table_name] = t
+        return t
+
+    def __str__(self):
+        return "<MemNRDB>, {} tables".format(len(self.tables))
 
 
 def _apply_class(row: dict, to_class: bool or 'Row'):
@@ -51,7 +88,7 @@ class Table:
             if "id" in row:
                 _id = row['id']
                 if _id in self.meta_data:
-                    raise DBException("Запись с данным id ({}) уже есть в таблице".format(_id))
+                    raise DBIndexError(self, 'insert', "Запись с данным id ({}) уже есть в таблице".format(_id))
             else:
                 while self.index_count in self.meta_data:
                     self.index_count += 1
@@ -60,7 +97,7 @@ class Table:
             self.data.append(row)
             self.meta_data[_id] = row
         else:
-            raise DBException("Запись должна быть типа dict, получено: {}".format(type(row)))
+            raise DBTypeError(self, "insert", 'row', row, dict)
         return row
 
     def update(self, row: dict):
@@ -70,9 +107,17 @@ class Table:
                 old_data.update(row)
                 return old_data
             else:
-                raise DBException("Для обновления необходим id записи")
+                raise DBIndexError(self, 'update', "не найден id записи")
         else:
-            raise DBException("Запись должна быть типа dict, получено: {}".format(type(row)))
+            raise DBTypeError(self, "insert", 'row', row, dict)
+
+    def ins_upd(self, row: dict):
+        try:
+            return self.insert(row)
+        except DBIndexError:
+            pass
+
+        return self.update(row)
 
     def rows(self, to_class: bool or 'Row'=False):
         for row in self.data:
@@ -82,25 +127,39 @@ class Table:
         try:
             return _apply_class(self.meta_data[_id], to_class)
         except KeyError:
-            raise DBException("Элемента с таким id ({}) не найдено".format(_id))
+            raise DBIndexError(self, 'get', "Элемента с таким id ({}) не найдено".format(_id))
 
     def query(self, q: "Query"):
         q.table = self
         return q
 
+    def __str__(self):
+        return "<MemNRDB.Table:{}>, {} rows".format(self.name, len(self.data))
+
 
 class Row:
     def __init__(self, raw: dict):
-        self.data = raw
+        object.__setattr__(self, "_data", raw)
 
-    def _get_raw_data(self):
-        return self.data
+    @property
+    def _raw_data(self) -> dict:
+        return self._data
 
     def __getitem__(self, item):
-        return self.data[item]
+        return self._data[item]
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
 
     def __getattr__(self, item):
-        return self.data[item]
+        if '_data' == item:
+            return self._raw_data
+        else:
+            return self._data.get(item, None)
+
+    def __setattr__(self, key, value):
+
+        self._data[key] = value
 
     def __delete__(self, instance):
         return NotImplemented

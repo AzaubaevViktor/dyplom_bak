@@ -1,6 +1,6 @@
 import unittest
 
-from mem_nr_db import Query, QueryLogic, MemNRDB, Table, DBException, Row
+from mem_nr_db import Query, QueryLogic, MemNRDB, Table, DBException, Row, DBTypeError
 
 
 class TestDB(unittest.TestCase):
@@ -153,7 +153,16 @@ class TestDB(unittest.TestCase):
         self.assertEqual(row.test, "value")
         self.assertEqual(row[12], 34)
         self.assertEqual(row[1, 2], (3, 4))
-        self.assertIsInstance(row._get_raw_data(), dict)
+        self.assertIsInstance(row._raw_data, dict)
+
+    def test_assert(self):
+        db = MemNRDB()
+        db.create_table("tost")
+
+        t = db['tost']
+        with self.assertRaises(DBTypeError):
+            t.insert([])
+
 
 
 if __name__ == '__main__':

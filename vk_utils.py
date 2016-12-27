@@ -7,6 +7,8 @@ from vk import API as VkAPI
 from vk.api import Request as VkRequest
 from vk.exceptions import VkAPIError
 
+from mem_nr_db import Row, Table
+
 
 class API(VkAPI):
     def __getattr__(self, method_name):
@@ -101,7 +103,40 @@ class Group:
             ids = data['items']
             self.members_count = data['count']
             count += len(ids)
-            for _id in ids:
-                yield _id
+            yield ids
+
+
+class User:
+    def __init__(self, row: dict):
+        self.row = row
+        if 'cost' not in self.row:
+            self.row['cost'] = 0
+
+    def get_friends(self):
+        return NotImplemented
+
+    def load_to_table(self, table: Table):
+        table.ins_upd(self.row)
+
+    @classmethod
+    def load(cls, table: Table, _id: int):
+        return User(table.get(_id))
+
+    @property
+    def cost(self):
+        return self.row['cost']
+
+    @cost.setter
+    def cost(self, value):
+        self.row['cost'] = value
+
+
+def get_users(api, ids: int or list):
+    users_data = api.users.get(
+        user_ids=ids,
+        fields=['bdate', 'city', 'connections', 'education', 'exports', 'personal', 'relations', 'sex', 'universities']
+    )
+    for user_data in users_data:
+        yield User(user_data)
 
 
