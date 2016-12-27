@@ -163,6 +163,37 @@ class TestDB(unittest.TestCase):
         with self.assertRaises(DBTypeError):
             t.insert([])
 
+    def test_serialize(self):
+        db = MemNRDB()
+        t = db.create_table("tost")
+
+        t.insert({"a": 12})
+        t.insert({"b": 23})
+
+        tt = db.create_table("test")
+
+        tt.insert({"c": 34})
+        tt.insert({"d": 45})
+
+        db.serialize("test_file.json")
+
+        new_db = MemNRDB.load("test_file.json")
+
+        tt = new_db['test']
+        t = new_db['tost']
+
+        self.assertIsInstance(tt, Table)
+        self.assertIsInstance(t, Table)
+
+        r = t.get(1, to_class=True)
+        rr = tt.get(2, to_class=True)
+
+        self.assertEqual(r.a, 12)
+        self.assertEqual(rr.d, 45)
+
+        r3 = Row(t.insert({"test": 333}))
+
+        self.assertEqual(r3.test, 333)
 
 
 if __name__ == '__main__':

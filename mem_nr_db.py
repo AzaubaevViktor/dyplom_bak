@@ -1,3 +1,6 @@
+import json
+
+
 class DBException(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -38,6 +41,27 @@ class DBTypeError(DBException):
         )
 
 
+class MemNRDBEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, MemNRDB):
+            return {'__MemNRDB__': True, '__tables__': o.tables}
+        if isinstance(o, Table):
+            return o.data
+        return json.JSONEncoder.default(self, o)
+
+
+def db_json_hook(dct):
+    if '__MemNRDB__' in dct:
+        tables = dct['__tables__']
+        db = MemNRDB()
+        for table_name, table_data in tables.items():
+            table = db.create_table(table_name)
+            for row in table_data:
+                table.insert(row)
+        return db
+    return dct
+
+
 class MemNRDB:
     def __init__(self):
         self.tables = {}
@@ -55,6 +79,17 @@ class MemNRDB:
 
     def __str__(self):
         return "<MemNRDB>, {} tables".format(len(self.tables))
+
+    def serialize(self, file_name: str):
+        return json.dump(self, open(file_name, "wt"), cls=MemNRDBEncoder)
+
+    @classmethod
+    def load(cls, file_name: str):
+        db = json.load(open(file_name, "rt"), object_hook=db_json_hook)
+        if isinstance(db, MemNRDB):
+            return db
+        else:
+            raise DBException("Не удалось загрузить базу из файла.")
 
 
 def _apply_class(row: dict, to_class: bool or 'Row'):
