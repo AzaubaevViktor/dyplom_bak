@@ -119,7 +119,7 @@ def get_wall_posts(api: API, users: list, count: int, from_time=-1):
                 likes = item['likes']['count']
                 reposts = item['reposts']['count']
 
-                if -1 != from_time and dt > from_time:
+                if -1 != from_time and text and dt > from_time:
                     yield user, dt, text, likes, reposts
 
 
