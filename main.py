@@ -32,6 +32,8 @@ for group_name, cost in settings['groups'].items():
             user.load_to_table(t)
         print("Done!")
 
+    db.serialize("db.json")
+
 pass
 print(t)
 

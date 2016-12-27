@@ -168,7 +168,7 @@ class TestDB(unittest.TestCase):
         t = db.create_table("tost")
 
         t.insert({"a": 12})
-        t.insert({"b": 23})
+        t.insert({"бля": 23})
 
         tt = db.create_table("test")
 
@@ -186,9 +186,13 @@ class TestDB(unittest.TestCase):
         self.assertIsInstance(t, Table)
 
         r = t.get(1, to_class=True)
+        r2 = t.get(2, to_class=True)
+
         rr = tt.get(2, to_class=True)
 
         self.assertEqual(r.a, 12)
+        self.assertEqual(r2['бля'], 23)
+
         self.assertEqual(rr.d, 45)
 
         r3 = Row(t.insert({"test": 333}))

@@ -80,8 +80,17 @@ class MemNRDB:
     def __str__(self):
         return "<MemNRDB>, {} tables".format(len(self.tables))
 
-    def serialize(self, file_name: str):
-        return json.dump(self, open(file_name, "wt"), cls=MemNRDBEncoder)
+    def serialize(self, file_name: str, pretty=False):
+        kwargs = {
+            "cls": MemNRDBEncoder,
+            "ensure_ascii": False
+        }
+        if pretty:
+            kwargs.update({
+                "sort_keys": True,
+                "indent": 4
+            })
+        return json.dump(self, open(file_name, "wt"), **kwargs)
 
     @classmethod
     def load(cls, file_name: str):
