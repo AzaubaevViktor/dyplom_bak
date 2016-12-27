@@ -74,13 +74,13 @@ if namespace.online:
     print("Online mode")
     print("===============================")
     user_count = 0
-    ids = []
+    users = []
     for user in t.query(Query.ANY()).all(to_class=User):  # type: User
         user_count += 1
-        ids.append(user.id)
-        if 25 == len(ids):
-            for dt, text, likes, reposts in get_wall_posts(api, ids, 2, start):
-                print("{}:".format(str(user)))
+        users.append(user)
+        if 25 == len(users):
+            for cur_user, dt, text, likes, reposts in get_wall_posts(api, users, 2, start):
+                print("{}:".format(str(cur_user)))
                 print(" {}; {}/{}".format(
                     datetime.datetime.fromtimestamp(
                         int(dt)
@@ -90,17 +90,13 @@ if namespace.online:
                 ))
                 print(" {}".format(text))
                 print("-------------------------------")
-            print("{} by {} sec, {} user/sec (last_id:{})\n".format(
+            print("{} by {} sec, {} user/sec (last_id:{})".format(
                 user_count,
                 time.time() - start,
                 user_count / (time.time() - start),
-                ids[-1]
+                users[-1]
             ))
 
-            time.sleep(1)
-            ids = []
-
-
-
-
+            # time.sleep(1)
+            users = []
 

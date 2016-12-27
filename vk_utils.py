@@ -105,13 +105,13 @@ class Group:
             yield ids
 
 
-def get_wall_posts(api: API, ids: list, count: int, from_time=-1):
+def get_wall_posts(api: API, users: list, count: int, from_time=-1):
     # TODO: переделать ids на users
     answer = api.execute.wallWatch(
-        id_list=ids,
+        id_list=[user.id for user in users],
         count=count
     )
-    for posts in answer:
+    for user, posts in zip(users, answer):
         if posts:
             for item in posts:
                 dt = item['date']
@@ -120,7 +120,7 @@ def get_wall_posts(api: API, ids: list, count: int, from_time=-1):
                 reposts = item['reposts']['count']
 
                 if -1 != from_time and dt > from_time:
-                    yield dt, text, likes, reposts
+                    yield user, dt, text, likes, reposts
 
 
 class User:
@@ -155,7 +155,7 @@ class User:
         return "<User#{}>: {} {}".format(
             self.id,
             self.row.get('first_name', "---"),
-            self.row.get('second_name', "---")
+            self.row.get('last_name', "---")
         )
 
 
