@@ -2,13 +2,12 @@ import argparse
 import datetime
 import json
 import os
-import sys
 
 import time
 
 from mem_nr_db import MemNRDB, DBException, Query
 
-from vk_utils import VkInit, Group, get_users, User, get_wall_posts
+from vk_utils import VkInit, Group, User
 
 APP_ID = os.environ['APP_ID']
 APP_KEY = os.environ["APP_KEY"]
@@ -56,20 +55,23 @@ if namespace.delete_db:
 
 if namespace.load_from_groups:
     print("Load user from groups")
+    start = time.time()
     for group_name, cost in settings['groups'].items():
         group = Group(group_name)
         print("Group: {}".format(group_name))
         for ids in group.get_members(api):
             print("{} ids come".format(len(ids)))
-            for user in get_users(api, ids):
+            for user in api.get_users(ids):
                 user.cost["group_{}".format(group_name)] = cost
                 user.load_to(t)
             print("OK")
         print("Done! Saving...")
         db.serialize("db.json")
         print("Saved")
+    end = time.time()
+    print("{}".format(end - start))
 
-start = time.time()
+start = time.time() - 60 * 60
 if namespace.online:
     print("Online mode")
     print("===============================")
@@ -79,7 +81,7 @@ if namespace.online:
         user_count += 1
         users.append(user)
         if 25 == len(users):
-            for cur_user, dt, text, likes, reposts in get_wall_posts(api, users, 2, start):
+            for cur_user, dt, text, likes, reposts in api.get_wall_posts(users, 2, start):
                 print("{}:".format(str(cur_user)))
                 print(" {}; {}/{}".format(
                     datetime.datetime.fromtimestamp(
