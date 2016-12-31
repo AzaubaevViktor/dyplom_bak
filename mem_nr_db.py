@@ -1,4 +1,6 @@
 import json
+from typing import Dict, TypeVar
+from typing import List
 
 
 class DBException(Exception):
@@ -63,16 +65,44 @@ def db_json_hook(dct):
 
 
 class MemNRDB:
-    def __init__(self):
-        self.tables = {}
+    """
+    Нереляционная база данных, работающая в памяти.
+    :Example:
+    Создать БД
+    >>> mdb = MemNRDB()
+    >>> file_mdb = MemNRDB.load('db.json')
 
-    def __getitem__(self, table_name):
+    Создать таблицу:
+    >>> table = mdb.init_table('table_name')
+
+    Получить таблицу по имени:
+    >>> table = mdb.table_name
+    >>> table = mdb.init_table('table_name')
+
+    Сохранить БД в файл:
+    >>> file_mdb.serialize('db.json')
+
+    """
+    def __init__(self):
+        self.tables = {}  # type: Dict[str, Table]
+
+    def __getitem__(self, table_name: str) -> 'Table':
+        """
+        Возвращает таблицу через .
+        :param table_name: название таблицы
+        :return: таблица
+        """
         try:
             return self.tables[table_name]
         except KeyError:
             raise DBException("Не найдена таблица с именем {}".format(table_name))
 
-    def init_table(self, table_name: str):
+    def init_table(self, table_name: str) -> 'Table':
+        """
+        Вернуть таблицу по имени. Если её нет -- создать
+        :param table_name:
+        :return: таблица
+        """
         if table_name in self.tables:
             t = self.tables[table_name]
         else:
@@ -84,6 +114,12 @@ class MemNRDB:
         return "<MemNRDB>, {} tables".format(len(self.tables))
 
     def serialize(self, file_name: str, pretty=False):
+        """
+        Загружает БД в файл
+        :param file_name: Имя файла БД
+        :param pretty: красивый вывод в файл
+        :return:
+        """
         kwargs = {
             "cls": MemNRDBEncoder,
             "ensure_ascii": False
@@ -93,10 +129,15 @@ class MemNRDB:
                 "sort_keys": True,
                 "indent": 4
             })
-        return json.dump(self, open(file_name, "wt"), **kwargs)
+        json.dump(self, open(file_name, "wt"), **kwargs)
 
     @classmethod
-    def load(cls, file_name: str):
+    def load(cls, file_name: str) -> 'MemNRDB':
+        """
+        Загрузить бд из файла
+        :param file_name: имя файла
+        :return:
+        """
         db = json.load(open(file_name, "rt"), object_hook=db_json_hook)
         if isinstance(db, MemNRDB):
             return db
@@ -114,14 +155,24 @@ def _apply_class(row: dict, to_class: bool or 'Row'):
 
 
 class Table:
-    def __init__(self, name, convert=True):
+    """
+    Таблица в БД
+    :example:
+
+    """
+    def __init__(self, name: str, convert: bool =True):
         self.name = name
-        self.data = list()  # type: list<dict>
+        self.data = list()  # type: List[dict]
         self.convert = convert
         self.index_count = 1
-        self.meta_data = {}
+        self.meta_data = {}  # type: Dict[int, dict]
 
-    def insert(self, row):
+    def insert(self, row: dict) -> dict:
+        """
+        Вставить уникальную запись в таблицу (проверка на уникальный id)
+        :param row: запись
+        :return: запись из БД
+        """
         if isinstance(row, dict):
             # try to convert values to int
             if self.convert:
@@ -147,18 +198,28 @@ class Table:
             raise DBTypeError(self, "insert", 'row', row, dict)
         return row
 
-    def update(self, row: dict):
+    def update(self, row: dict) -> dict:
+        """
+        Обновить запись в БД (только если уже запись с таким id существует)
+        :param row: новая запись
+        :return: обновлённая запись из БД
+        """
         if isinstance(row, dict):
             if 'id' in row:
-                old_data = self.get(row['id'])
-                old_data.update(row)
-                return old_data
+                data = self.get(row['id'])
+                data.update(row)
+                return data
             else:
                 raise DBIndexError(self, 'update', "не найден id записи")
         else:
             raise DBTypeError(self, "insert", 'row', row, dict)
 
-    def ins_upd(self, row: dict):
+    def ins_upd(self, row: dict) -> dict:
+        """
+        Создать или обновить запись в БД
+        :param row: запись
+        :return: запись из БД
+        """
         try:
             return self.insert(row)
         except DBIndexError:
@@ -166,17 +227,32 @@ class Table:
 
         return self.update(row)
 
-    def rows(self, to_class: bool or 'Row'=False):
+    def rows(self, to_class: bool or 'Row'=False) -> dict or 'Row':
+        """
+        Возвращает записи, применяя или нет определённый класс
+        :param to_class:
+          False: не применять type:Row к записи;
+          True: применять type:Row к записи;
+          T <= Row: Применять T к записи
+        :return:
+        """
         for row in self.data:
             yield _apply_class(row, to_class)
 
-    def get(self, _id: int, to_class: bool or 'Row'=False):
+    def get(self, _id: int, to_class: bool or 'Row'=False) -> dict or 'Row':
+        """
+        Вернуть запись по id
+        :param _id: id записи
+        :param to_class: обработка каждой записи
+        :return:
+        """
         try:
             return _apply_class(self.meta_data[_id], to_class)
         except KeyError:
             raise DBIndexError(self, 'get', "Элемента с таким id ({}) не найдено".format(_id))
 
-    def query(self, q: "Query"):
+    def query(self, q: "Query") -> 'Query':
+        """ Выполнить запрос """
         q.table = self
         return q
 
@@ -213,6 +289,7 @@ class Row:
 
 
 class Query:
+    """ Класс-запрос к БД """
     @classmethod
     def ANY(cls):
         return QueryAny(None)
