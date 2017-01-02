@@ -1,5 +1,5 @@
 import json
-from typing import Dict, TypeVar
+from typing import Dict, TypeVar, Iterable
 from typing import List
 
 
@@ -227,7 +227,7 @@ class Table:
 
         return self.update(row)
 
-    def rows(self, to_class: bool or 'Row'=False) -> dict or 'Row':
+    def rows(self, to_class: bool or 'Row'=False) -> Iterable[dict or 'Row']:
         """
         Возвращает записи, применяя или нет определённый класс
         :param to_class:
@@ -314,13 +314,18 @@ class Query:
         """ Возвращает экземпляр класса-запроса, которые пропускает любое поле """
         return QueryAny()
 
-    def __init__(self, name, table: "Table" = None):
+    def __init__(self, name: str, table: "Table" = None):
         self.path = name.split(".") if isinstance(name, str) else [name]
         self.method_name = "_exist_field"
         self.test = None
         self.table = table
 
     def __call__(self, row: dict) -> dict or None:
+        """
+        Проверяет запись в соответствии с фильтром
+        :param row: запись
+        :return: Строка или ничего, в зависимости от того, прошёл ли тест
+        """
         res = self._check(row)
 
         if res:
@@ -328,7 +333,13 @@ class Query:
         else:
             return None
 
-    def all(self, table: "Table" = None, to_class: bool or Row=False):
+    def all(self, table: "Table" = None, to_class: bool or Row=False) -> Iterable[Row]:
+        """
+        Возвращает все прошедшие фильтр записи
+        :param table: таблица, если не задана
+        :param to_class: преобразование в класс
+        :return: записи
+        """
         if self.table and table:
             raise DBException("Таблица уже задана")
         table = table or self.table
@@ -338,17 +349,26 @@ class Query:
             if r is not None:
                 yield _apply_class(r, to_class)
 
-    def limit(self, count: int, table: "Table" = None, to_class: bool or Row=False):
+    def limit(self, count: int, table: "Table" = None, to_class: bool or Row=False) -> Iterable[Row]:
+        """
+        Возвращает count записей, прошедших фильтр
+        :param count: кол-во записей, которые нужно вернуть
+        :param table: таблица, если не задана
+        :param to_class: преобразование в класс
+        :return: записи
+        """
         for row in self.all(table=table, to_class=to_class):
             yield row
             count -= 1
             if 0 == count:
                 return
 
-    def _exist_field(self, row):
+    def _exist_field(self, row: dict or Row) -> bool:
+        """ Проверяет, существует ли поле """
         return self._get_val_by_path(row) is not None
 
-    def _get_val_by_path(self, row):
+    def _get_val_by_path(self, row: dict or Row) -> dict or Row or None:
+        """ Возвращает значение нужного поля в строке, если оно есть """
         _row = row
         for p in self.path:
             if p in _row:
@@ -357,12 +377,19 @@ class Query:
                 return None
         return _row
 
-    def _check(self, row: dict) -> bool:
+    def _check(self, row: dict or Row) -> bool:
+        """
+        Проверяет, проходит ли запись через фильтр
+        :param row: запись
+        :return:
+        """
         if self._exist_field(row):
             if self.test is None:
                 return True
             else:
+                # Получаем значение
                 val = self._get_val_by_path(row)
+                # Проверяем условие
                 res = getattr(val, self.method_name)(self.test)
                 if NotImplemented == res:
                     return False
@@ -412,14 +439,16 @@ class Query:
 
 
 class QueryAny(Query):
+    """ Класс-запрос для запроса 'любой' """
     def __init__(self):
         super().__init__("__any_not_used__")
 
-    def _check(self, row: dict):
+    def _check(self, row: dict) -> bool:
         return True
 
 
 class QueryLogic(Query):
+    """ Класс запрос для работы с & и | (логическое `и` и `или` в данном контексте)"""
     def __init__(self, method_name: str, left: Query, right: Query):
         self.method_name = method_name
         self.left = left
@@ -427,5 +456,5 @@ class QueryLogic(Query):
         self.mt = getattr(True, self.method_name)
         self.mf = getattr(False, self.method_name)
 
-    def _check(self, row: dict):
+    def _check(self, row: dict) -> bool:
         return (self.mt if (self.left._check(row)) else self.mf)(self.right._check(row))

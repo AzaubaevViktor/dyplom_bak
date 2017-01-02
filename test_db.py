@@ -94,6 +94,9 @@ class TestDB(unittest.TestCase):
         t.insert({"a": 5, "b": 25})
         t.insert({"a": 10, "b": 25})
         t.insert({"a": 20, "b": 25})
+        t.insert({"a": 20})
+        t.insert({"b": 20})
+        t.insert({})
 
         data = list(t.query((Query("a") < 15) & (Query("b") > 15)).all())
         self.assertEqual(len(data), 4)
