@@ -76,7 +76,7 @@ class MemNRDB:
     >>> table = mdb.init_table('table_name')
 
     Получить таблицу по имени:
-    >>> table = mdb.table_name
+    >>> table = mdb['table_name']
     >>> table = mdb.init_table('table_name')
 
     Сохранить БД в файл:
