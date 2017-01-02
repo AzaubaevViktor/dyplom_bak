@@ -154,6 +154,20 @@ class TestDB(unittest.TestCase):
         self.assertEqual(row[12], 34)
         self.assertEqual(row[1, 2], (3, 4))
         self.assertIsInstance(row._raw_data, dict)
+        self.assertIsNone(row.non_exist)
+        with self.assertRaises(KeyError):
+            val = row['now_exist']
+
+        row.unk = 12
+        self.assertEqual(row.unk, 12)
+        self.assertEqual(row['unk'], 12)
+        row['unk'] = 15
+        row['unk1'] = 16
+        self.assertEqual(row.unk, 15)
+        self.assertEqual(row['unk'], 15)
+        self.assertEqual(row.unk1, 16)
+        self.assertEqual(row['unk1'], 16)
+
 
     def test_assert(self):
         db = MemNRDB()

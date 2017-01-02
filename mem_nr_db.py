@@ -252,7 +252,7 @@ class Table:
             raise DBIndexError(self, 'get', "Элемента с таким id ({}) не найдено".format(_id))
 
     def query(self, q: "Query") -> 'Query':
-        """ Выполнить запрос """
+        """ Вернуть запрос с прикреплённой таблицой """
         q.table = self
         return q
 
@@ -261,6 +261,26 @@ class Table:
 
 
 class Row:
+    """
+    Класс обёртка для записи
+    >>> row = Row({'val1': 1, 'val2': 2, 'list': [1, 2, 3], (1, 2): 'test'})
+
+    >>> v = row['val1'] # 1
+    >>> v = row.val1 # 1
+
+    >>> row.non_exist # None
+
+    >>> row['non_exist']
+    Traceback (most recent call last):
+        File "?", line ?, in ?
+            row['non_exist']
+    KeyError: 'non_exist'
+
+    >>> v = row[(1, 2)] # 'test'
+
+    >>> row['field'] = 'val'
+    >>> row.field = 'val'
+    """
     def __init__(self, raw: dict):
         object.__setattr__(self, "_data", raw)
 
@@ -281,7 +301,6 @@ class Row:
             return self._data.get(item, None)
 
     def __setattr__(self, key, value):
-
         self._data[key] = value
 
     def __delete__(self, instance):
@@ -291,8 +310,9 @@ class Row:
 class Query:
     """ Класс-запрос к БД """
     @classmethod
-    def ANY(cls):
-        return QueryAny(None)
+    def ANY(cls) -> 'QueryAny':
+        """ Возвращает экземпляр класса-запроса, которые пропускает любое поле """
+        return QueryAny()
 
     def __init__(self, name, table: "Table" = None):
         self.path = name.split(".") if isinstance(name, str) else [name]
@@ -392,6 +412,9 @@ class Query:
 
 
 class QueryAny(Query):
+    def __init__(self):
+        super().__init__("__any_not_used__")
+
     def _check(self, row: dict):
         return True
 
