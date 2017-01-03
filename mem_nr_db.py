@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Dict, TypeVar, Iterable
 from typing import List
 
@@ -129,7 +130,11 @@ class MemNRDB:
                 "sort_keys": True,
                 "indent": 4
             })
+        if os.path.exists(file_name):
+            os.rename(file_name, file_name + ".old")
         json.dump(self, open(file_name, "wt"), **kwargs)
+        if os.path.exists(file_name + ".old"):
+            os.remove(file_name + ".old")
 
     @classmethod
     def load(cls, file_name: str) -> 'MemNRDB':
