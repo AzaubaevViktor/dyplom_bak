@@ -2,6 +2,7 @@ import random
 from time import sleep
 from typing import Iterator, List, Generator, Generic, Iterable, Tuple
 
+import logging
 import vk
 from vk import API as VkAPI
 from vk.api import Request as VkRequest
@@ -14,6 +15,10 @@ class API(VkAPI):
     """
     Модуль-обвязка для vk.API
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log = logging.getLogger("VkAPI-Bind")
+
     def __getattr__(self, method_name: str):
         return Request(self, method_name)
 
@@ -59,6 +64,10 @@ class API(VkAPI):
 
 class Request(VkRequest):
     """ Модуль-обвязка для vk.Request, обрабатывающая ошики """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log = logging.getLogger("VkRequest-Bind")
+
     def __getattr__(self, method_name):
         return Request(self._api, self._method_name + '.' + method_name)
 
@@ -68,7 +77,8 @@ class Request(VkRequest):
                 return super().__call__(*args, **kwargs)
             except VkAPIError as e:
                 if 6 == e.code:
-                    print(e.message)
+
+                    self.log.info("Error: \n  %s", e.message)
                     sleep(1)
 
 
@@ -91,7 +101,6 @@ class VkInit:
     """ Класс для подключения к API VK """
     def __init__(self, app_id: str, token_file_name: str):
         """
-
         :param app_id: ID приложения
         :param token_file_name: расположение файла с токеном полбзователя
         """
@@ -162,6 +171,7 @@ class Group:
     def __init__(self, _id: int or str):
         self.members_count = -1
         self._id = _id
+        self.log = logging.getLogger("VkGroup")
 
     def get_members(self, api: API) -> Iterable[List[int]]:
         """
@@ -172,7 +182,7 @@ class Group:
         count = 0
         while self.members_count == -1 or count < self.members_count:
             data = api.groups.getMembers(group_id=self._id, offset=count, count=1000)
-            print(count)
+            self.log.debug("Получено пользователей: {}".format(count))
             ids = data['items']
             self.members_count = data['count']
             count += len(ids)

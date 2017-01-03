@@ -5,6 +5,8 @@ import time
 
 import datetime
 
+import logging
+
 from mem_nr_db import MemNRDB, DBException, Query
 from utils import Env
 from vk_utils import VkInit, Group, User
@@ -29,6 +31,8 @@ class Actions:
 
         self.users = self.db.init_table('users')
 
+        self.log = logging.getLogger("Actions")
+
     def __call__(self, name):
         if "__" not in name:
             getattr(self, name)()
@@ -48,16 +52,16 @@ class Actions:
             group = Group(group_name)
             print("Group: {}".format(group_name))
             for ids in group.get_members(self.api):
-                print("{} ids come".format(len(ids)))
+                print("{} users coming, processing... ".format(len(ids)), end='')
                 for user in self.api.get_users(ids):
                     user.cost["group_{}".format(group_name)] = cost
                     user.load_to(self.users)
                 print("OK")
-            print("Done! Saving...")
+            print("Group {} done! Saving...".format(group_name))
             self.db.serialize("db.json")
             print("Saved")
         end = time.time()
-        print("{}".format(end - start))
+        print("{} sec".format(end - start))
 
     def online_mode(self):
         start = time.time()
@@ -80,10 +84,11 @@ class Actions:
                     ))
                     print(" {}".format(text))
                     print("-------------------------------")
-                print("{} by {} sec, {} user/sec (last_id:{})".format(
+                self.log.debug("{} by {:.2f} sec, {:.2f} user/sec ({}...{})".format(
                     user_count,
                     time.time() - start,
                     user_count / (time.time() - start),
+                    users[0],
                     users[-1]
                 ))
 
