@@ -10,16 +10,19 @@ class TestDB(unittest.TestCase):
         self.assertIsInstance(q, Query)
         ch = q._check
 
-        self.assertTrue(ch({"test": 10}))
-        self.assertFalse(ch({"test": 15}))
-        self.assertFalse(ch({"test": None}))
-        self.assertTrue(ch({"test": 10.}))
-        self.assertFalse(ch({"test": []}))
-        self.assertFalse(ch({"test": "10"}))
-        self.assertFalse(ch({"test": True}))
-        self.assertFalse(ch({12: 10}))
-        self.assertFalse(ch({"test_test": 10}))
-        self.assertFalse(ch({}))
+        def test_q(q):
+            self.assertTrue(ch({"test": 10}))
+            self.assertFalse(ch({"test": 15}))
+            self.assertFalse(ch({"test": None}))
+            self.assertTrue(ch({"test": 10.}))
+            self.assertFalse(ch({"test": []}))
+            self.assertFalse(ch({"test": "10"}))
+            self.assertFalse(ch({"test": True}))
+            self.assertFalse(ch({12: 10}))
+            self.assertFalse(ch({"test_test": 10}))
+            self.assertFalse(ch({}))
+
+        test_q(q)
 
         q = Query(12) == True  # type: Query
         self.assertIsInstance(q, Query)
@@ -119,7 +122,7 @@ class TestDB(unittest.TestCase):
         with self.assertRaises(DBException):
             t.insert({"id": 3})
 
-    def test_update(self):
+    def test_insert_update(self):
         db = MemNRDB()
         db.init_table("tost")
 
@@ -127,6 +130,8 @@ class TestDB(unittest.TestCase):
         row2 = t.insert({"id": 2})
         row1 = t.insert({"hello": "world", "zzz": "xxx"})
         row3 = t.insert({"world": "hello"})
+        with self.assertRaises(DBException):
+            t.insert({"id": None, 'c': 4})
 
         with self.assertRaises(DBException):
             t.update({"id": 4, "val": 123})
@@ -137,6 +142,13 @@ class TestDB(unittest.TestCase):
         self.assertEqual(row['hello'], "WORLD")
         self.assertEqual(row['zzz'], "xxx")
         self.assertEqual(row['xxx'], "zzz")
+
+        row = t.update({"id": 1, "xxx": None})
+        self.assertEqual("xxx" not in row, True)
+        self.assertEqual(row['zzz'], "xxx")
+
+        with self.assertRaises(DBException):
+            t.update({"id": None, "yyY": 123})
 
     def test_row(self):
         db = MemNRDB()

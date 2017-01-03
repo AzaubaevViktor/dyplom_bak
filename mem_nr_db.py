@@ -157,13 +157,51 @@ def _apply_class(row: dict, to_class: bool or 'Row'):
 class Table:
     """
     Таблица в БД
-    :example:
 
+    >>> t = Table("table")
+
+    >>> row = t.insert({'a': 1, 'b': 2})
+
+    Каждой строке при создании присваивается новый id:
+    >>> row['id']
+    1
+
+    id можно указывать вручную:
+    >>> row5 = t.insert({'id': 5, 'c': 3})
+    >>> row5['id']
+    5
+
+    Если нужно обновить запись:
+    >>> row5 = t.update({'id': 5, 'd': 4})
+    >>> row5['d']
+    4
+    >>> row5['c']
+    3
+
+    Если нужно удалить поле из записи:
+    >>> row5 = t.update({'id': 5, 'c': None})
+    >>> row5['c']
+    Traceback (most recent call last):
+      File "?", line ?, in ?
+        row5['c']
+    KeyError: 'c'
+
+    Обновлять ещё не созданные записи нельзя:
+    >>> row6 = t.update({'id': 6, 'val': 'val'})
+    Traceback (most recent call last):
+      File "?", line ?, in ?
+        raise DBIndexError(...)
+    mem_nr_db.DBIndexError: DBIndexError в таблице `table` во время операции `get`: Элемента с таким id (6) не найдено
+
+    Если неизвестно, есть ли запись с id в табице, то:
+    >>> row6 = t.ins_upd({'id': 6, 'val': 'val'})
+    >>> row6['id']
+    6
     """
-    def __init__(self, name: str, convert: bool =True):
+    def __init__(self, name: str, convert: bool = True):
         self.name = name
         self.data = list()  # type: List[dict]
-        self.convert = convert
+        self.convert = convert  # Конвертировать ли переменные в числа автоматически
         self.index_count = 1
         self.meta_data = {}  # type: Dict[int, dict]
 
@@ -185,9 +223,12 @@ class Table:
             # check index
             if "id" in row:
                 _id = row['id']
+                if not isinstance(_id, int):
+                    raise DBIndexError(self, 'insert', "поле id должен быть числом, а не `{}` ({})".format(_id, type(_id)))
                 if _id in self.meta_data:
                     raise DBIndexError(self, 'insert', "Запись с данным id ({}) уже есть в таблице".format(_id))
             else:
+                # create index
                 while self.index_count in self.meta_data:
                     self.index_count += 1
                 _id = row["id"] = self.index_count
@@ -208,6 +249,12 @@ class Table:
             if 'id' in row:
                 data = self.get(row['id'])
                 data.update(row)
+                _to_del = []
+                for k, v in data.items():
+                    if v is None:
+                        _to_del.append(k)
+                for k in _to_del:
+                    del data[k]
                 return data
             else:
                 raise DBIndexError(self, 'update', "не найден id записи")
@@ -265,10 +312,13 @@ class Row:
     Класс обёртка для записи
     >>> row = Row({'val1': 1, 'val2': 2, 'list': [1, 2, 3], (1, 2): 'test'})
 
-    >>> v = row['val1'] # 1
-    >>> v = row.val1 # 1
+    >>> row['val1']
+    1
 
-    >>> row.non_exist # None
+    >>> row.val1
+    1
+
+    >>> row.non_exist  # None
 
     >>> row['non_exist']
     Traceback (most recent call last):
@@ -276,10 +326,13 @@ class Row:
             row['non_exist']
     KeyError: 'non_exist'
 
-    >>> v = row[(1, 2)] # 'test'
+    >>> row[(1, 2)]
+    'test'
 
     >>> row['field'] = 'val'
     >>> row.field = 'val'
+    >>> row.field
+    'val'
     """
     def __init__(self, raw: dict):
         object.__setattr__(self, "_data", raw)
@@ -308,17 +361,58 @@ class Row:
 
 
 class Query:
-    """ Класс-запрос к БД """
+    """ Класс-запрос к БД
+
+    Создаст запрос, который вернёт все поля, в которых:
+         .--* поле field существует и меньше 123
+    .---или
+    |    `--* поле field2 существует и не равно 'string'
+    и
+    `---* поле field3 сществует
+    >>> q = ((Query("field") < 123) | (Query("field2") != "string")) & (Query("field3"))
+
+    Можно указать таблицу руками:
+    >>> t = Table('table')
+    >>> q.table = t
+
+    Либо передать запрос таблице:
+    >>> q_t = t.query(q)
+
+    # TODO: Написать нормальный вывод, с list и что происходит внутри
+
+    После этого можно попросить у таблицы либо все записи:
+    >>> q.all() # doctest: +ELLIPSIS
+    <generator object Query.all at 0x...>
+
+    Либо определённое количество:
+    >>> q.limit(100) # doctest: +ELLIPSIS
+    <generator object Query.limit at 0x...>
+
+    Всё составление запроса можно уместить в одну строчку:
+    >>> t.query(Query("field") < 123).all() # doctest: +ELLIPSIS
+    <generator object Query.all at 0x...>
+
+    Также можно преобразовывать результаты в нужный класс:
+    >>> class SomeClassRow(Row):
+    ...     pass
+    >>> q.all(to_class=SomeClassRow) # doctest: +ELLIPSIS
+    <generator object Query.all at 0x...>
+
+    Либо во встроенный:
+    >>> q.limit(100, to_class=True) # doctest: +ELLIPSIS
+    <generator object Query.limit at 0x...>
+
+    """
     @classmethod
     def ANY(cls) -> 'QueryAny':
         """ Возвращает экземпляр класса-запроса, которые пропускает любое поле """
         return QueryAny()
 
-    def __init__(self, name: str, table: "Table" = None):
-        self.path = name.split(".") if isinstance(name, str) else [name]
-        self.method_name = "_exist_field"
-        self.test = None
-        self.table = table
+    def __init__(self, name: str or object, table: "Table" = None):
+        self.path = name.split(".") if isinstance(name, str) else [name]  # адрес поля
+        self.test_method_name = "_exist_field"  # метод: который будет вызываться у значения для проверки
+        self.test_value = None  # значение проверки
+        self.table = table  # ассоциированная таблица, из которой берутся записи
 
     def __call__(self, row: dict) -> dict or None:
         """
@@ -368,7 +462,7 @@ class Query:
         return self._get_val_by_path(row) is not None
 
     def _get_val_by_path(self, row: dict or Row) -> dict or Row or None:
-        """ Возвращает значение нужного поля в строке, если оно есть """
+        """ Возвращает значение нужного поля по адресу в self.path, если оно есть """
         _row = row
         for p in self.path:
             if p in _row:
@@ -384,13 +478,13 @@ class Query:
         :return:
         """
         if self._exist_field(row):
-            if self.test is None:
+            if self.test_value is None:
                 return True
             else:
                 # Получаем значение
                 val = self._get_val_by_path(row)
                 # Проверяем условие
-                res = getattr(val, self.method_name)(self.test)
+                res = getattr(val, self.test_method_name)(self.test_value)
                 if NotImplemented == res:
                     return False
                 return True if res else False
@@ -406,36 +500,37 @@ class Query:
             raise DBException("Логические операции можно проводить только с запросами, а не с {}".format(type(other)))
         return QueryLogic("__or__", self, other)
 
-    def _comparsion_filter_generator(self, method_name, other):
-        self.method_name = method_name
-        self.test = other
+    def _comparison_filter_generator(self, test_method_name: str, test_value: object):
+        """ Задаёт, какую операцию с чем выполнить """
+        self.test_method_name = test_method_name
+        self.test_value = test_value
         return self
 
     def __eq__(self, other) -> "Query":
-        return self._comparsion_filter_generator("__eq__", other)
+        return self._comparison_filter_generator("__eq__", other)
 
     def __ne__(self, other) -> "Query":
-        return self._comparsion_filter_generator("__ne__", other)
+        return self._comparison_filter_generator("__ne__", other)
 
     def __lt__(self, other) -> "Query":
-        return self._comparsion_filter_generator("__lt__", other)
+        return self._comparison_filter_generator("__lt__", other)
 
     def __le__(self, other) -> "Query":
-        return self._comparsion_filter_generator("__le__", other)
+        return self._comparison_filter_generator("__le__", other)
 
     def __ge__(self, other) -> "Query":
-        return self._comparsion_filter_generator("__ge__", other)
+        return self._comparison_filter_generator("__ge__", other)
 
     def __gt__(self, other) -> "Query":
-        return self._comparsion_filter_generator("__gt__", other)
+        return self._comparison_filter_generator("__gt__", other)
 
     def is_(self, other) -> "Query":
         # TODO: разобраться, почему не работает
-        return self._comparsion_filter_generator("__is__", other)
+        return self._comparison_filter_generator("__is__", other)
 
     def is_not(self, other) -> "Query":
         # TODO: разобраться, почему не работает
-        return self._comparsion_filter_generator("__is_not__", other)
+        return self._comparison_filter_generator("__is_not__", other)
 
 
 class QueryAny(Query):
