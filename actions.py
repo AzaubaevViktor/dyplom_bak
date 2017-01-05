@@ -34,7 +34,7 @@ class Actions:
         self.log = logging.getLogger("Actions")
 
     def __call__(self, name):
-        if "__" not in name:
+        if "_" != name[0]:
             getattr(self, name)()
         else:
             print("action `{}` not found".format(name))
