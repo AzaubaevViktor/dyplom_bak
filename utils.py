@@ -1,5 +1,7 @@
 import os
 
+import sys
+
 
 class MetaEnv(type):
     _cache = {}
@@ -22,6 +24,12 @@ class MetaEnv(type):
 
 class Env(object, metaclass=MetaEnv):
     pass
+
+
+def print_line(*args, **kwargs):
+    print("\r", end='')
+    print(*args, **kwargs, end='')
+    sys.stdout.flush()
 
 
 if '__main__' == __name__:

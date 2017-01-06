@@ -8,8 +8,9 @@ import datetime
 import logging
 
 from mem_nr_db import MemNRDB, DBException, Query
-from utils import Env
+from utils import Env, print_line
 from vk_utils import VkInit, Group, User
+import sys
 
 
 class Actions:
@@ -29,7 +30,7 @@ class Actions:
         except FileNotFoundError:
             self.db = MemNRDB()
 
-        self.users = self.db.init_table('users')
+        self.users = self.db.init_table('users', convert=True, convert_exclude=["bdate"])
 
         self.log = logging.getLogger("Actions")
 
@@ -37,7 +38,7 @@ class Actions:
         if "_" != name[0]:
             getattr(self, name)()
         else:
-            print("action `{}` not found".format(name))
+            print("Error: Action `{}` not found".format(name))
 
     @staticmethod
     def delete_db():
@@ -51,17 +52,32 @@ class Actions:
         for group_name, cost in self.settings['groups'].items():
             group = Group(group_name)
             print("Group: {}".format(group_name))
+            total = 0
             for ids in group.get_members(self.api):
-                print("{} users coming, processing... ".format(len(ids)), end='')
+                print_line("Total: {}; {} users coming, processing... ".format(total, len(ids)))
                 for user in self.api.get_users(ids):
                     user.cost["group_{}".format(group_name)] = cost
                     user.load_to(self.users)
-                print("OK")
+                total += len(ids)
+            print()
             print("Group {} done! Saving...".format(group_name))
             self.db.serialize("db.json")
             print("Saved")
         end = time.time()
-        print("{} sec".format(end - start))
+        print("==========================")
+        print("Total users in database: {}".format(len(self.users)))
+        print("{:.2f} sec".format(end - start))
+        print("Avg speed: {:.2f} users/sec".format(len(self.users) / (end- start)))
+
+    def set_cost(self):
+        print("Set costs to users")
+
+        count = 0
+        users_len = len(self.users)
+        for user in self.users.rows(to_class=User):
+            count += 1
+            print_line("{}/{}: {}".format(count, users_len, str(user)))
+            user_cost_setter(user)
 
     def online_mode(self):
         start = time.time()
@@ -95,3 +111,6 @@ class Actions:
                 # time.sleep(1)
                 users = []
 
+
+def user_cost_setter(user: User):
+    user

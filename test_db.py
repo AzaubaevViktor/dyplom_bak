@@ -48,6 +48,58 @@ class TestDB(unittest.TestCase):
         self.assertFalse(ch({"a": 10}))
         self.assertFalse(ch({"a": 15}))
 
+        q = Query("__").field.exist()
+        self.assertIsInstance(q, Query)
+
+        ch = q._check
+
+        self.assertTrue(ch({"field": 123}))
+        self.assertTrue(ch({"field": []}))
+        self.assertFalse(ch({"field": None}))
+        self.assertFalse(ch({}))
+        self.assertFalse(ch({"piu": 123}))
+        self.assertFalse(ch({'cost': {'group_nsu24': 0.8},
+                                      'faculty': 0,
+                                      'faculty_name': '',
+                                      'first_name': 'Наталья',
+                                      'graduation': 0,
+                                      'id': 273855550,
+                                      'last_name': 'Иванцова',
+                                      'sex': 1,
+                                      'universities': [],
+                                      'university': 0,
+                                      'university_name': ''}))
+
+    def test_convert(self):
+        t = Table("tn", convert=True)
+        row = t.insert({"int": "123",
+                        "float": "123.444",
+                        "str": "test",
+                        "int_": 123,
+                        "float_": 123.444})
+        self.assertEqual(row["int"],  123)
+        self.assertEqual(row["float"],  123.444)
+        self.assertEqual(row["str"],  "test")
+        self.assertEqual(row["int_"],  123)
+        self.assertEqual(row["float_"],  123.444)
+
+        t = Table("tn", convert=True, convert_exclude=['exclude1', "exclude2"])
+        row = t.insert({"int": "123",
+                        "float": "123.444",
+                        "str": "test",
+                        "int_": 123,
+                        "float_": 123.444,
+                        "exclude1": "123.33",
+                        "exclude2": "123"})
+        self.assertEqual(row["int"], 123)
+        self.assertEqual(row["float"], 123.444)
+        self.assertEqual(row["str"], "test")
+        self.assertEqual(row["int_"], 123)
+        self.assertEqual(row["float_"], 123.444)
+        self.assertEqual(row["exclude1"], "123.33")
+        self.assertEqual(row["exclude2"], "123")
+
+
     def test_filter_logic(self):
         q = (Query("table").a < 10) & (Query("table").b >= 20)  # type: QueryLogic
         self.assertIsInstance(q, QueryLogic)
@@ -217,7 +269,7 @@ class TestDB(unittest.TestCase):
 
     def test_serialize(self):
         db = MemNRDB()
-        t = db.init_table("tost")
+        t = db.init_table("tost", convert=False)
 
         t.insert({"a": 12})
         t.insert({"бля": 23})
@@ -227,15 +279,20 @@ class TestDB(unittest.TestCase):
         tt.insert({"c": 34})
         tt.insert({"d": 45})
 
+        tc = db.init_table("test_cnv", convert=True, convert_exclude=['a', 'b'])
+
         db.serialize("test_file.json")
 
         new_db = MemNRDB.load("test_file.json")
 
         tt = new_db['test']
         t = new_db['tost']
+        tc = new_db['test_cnv']
 
         self.assertIsInstance(tt, Table)
         self.assertIsInstance(t, Table)
+        self.assertEqual(tc.convert_exclude, ['a', 'b'])
+        self.assertEqual(tc.convert, True)
 
         r = t.get(1, to_class=True)
         r2 = t.get(2, to_class=True)

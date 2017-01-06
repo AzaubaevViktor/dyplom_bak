@@ -11,13 +11,16 @@ from vk.exceptions import VkAPIError
 from mem_nr_db import Row, Table
 
 
+logging.getLogger("VkUtils").setLevel(logging.WARNING)
+
+
 class API(VkAPI):
     """
     Модуль-обвязка для vk.API
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.log = logging.getLogger("VkAPI-Bind")
+        self.log = logging.getLogger("VkUtils.VkAPI-Bind")
 
     def __getattr__(self, method_name: str):
         return Request(self, method_name)
@@ -66,7 +69,7 @@ class Request(VkRequest):
     """ Модуль-обвязка для vk.Request, обрабатывающая ошики """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.log = logging.getLogger("VkRequest-Bind")
+        self.log = logging.getLogger("VkUtils.VkRequest-Bind")
 
     def __getattr__(self, method_name):
         return Request(self._api, self._method_name + '.' + method_name)
@@ -171,7 +174,7 @@ class Group:
     def __init__(self, _id: int or str):
         self.members_count = -1
         self._id = _id
-        self.log = logging.getLogger("VkGroup")
+        self.log = logging.getLogger("VkUtils.VkGroup")
 
     def get_members(self, api: API) -> Iterable[List[int]]:
         """

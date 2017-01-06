@@ -4,7 +4,6 @@ import os
 from typing import Dict, TypeVar, Iterable
 from typing import List
 
-
 class DBException(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -48,19 +47,32 @@ class DBTypeError(DBException):
 class MemNRDBEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, MemNRDB):
-            return {'__MemNRDB__': True, '__tables__': o.tables}
+            return {'__MemNRDB__': True,
+                    '__version__': o.VERSION,
+                    '__tables__': o.tables}
         if isinstance(o, Table):
-            return list(o.meta_data.values())
+            return {"__Table__": True,
+                    '__rows__': list(o.meta_data.values()),
+                    '__convert__': o.convert,
+                    '__convert_exclude__': o.convert_exclude}
         return json.JSONEncoder.default(self, o)
 
 
 def db_json_hook(dct):
     if '__MemNRDB__' in dct:
         tables = dct['__tables__']
+        version = dct['__version__']
+        if version != MemNRDB.VERSION:
+            raise DBException("Версия БД не совместима. Ожадиается: {}; Получена: {}".format(
+                MemNRDB.VERSION, version
+            ))
         db = MemNRDB()
         for table_name, table_data in tables.items():
-            table = db.init_table(table_name)
-            for row in table_data:
+            rows = table_data['__rows__']
+            convert_exclude = table_data['__convert_exclude__']
+            convert = table_data['__convert__']
+            table = db.init_table(table_name, convert=convert, convert_exclude=convert_exclude)
+            for row in rows:
                 table.insert(row)
         return db
     return dct
@@ -85,6 +97,8 @@ class MemNRDB:
     >>> file_mdb.serialize('db.json')
 
     """
+    VERSION = 0
+
     def __init__(self):
         self.tables = {}  # type: Dict[str, Table]
 
@@ -99,7 +113,7 @@ class MemNRDB:
         except KeyError:
             raise DBException("Не найдена таблица с именем {}".format(table_name))
 
-    def init_table(self, table_name: str) -> 'Table':
+    def init_table(self, table_name: str, *args, **kwargs) -> 'Table':
         """
         Вернуть таблицу по имени. Если её нет -- создать
         :param table_name:
@@ -108,7 +122,7 @@ class MemNRDB:
         if table_name in self.tables:
             t = self.tables[table_name]
         else:
-            t = Table(table_name)
+            t = Table(table_name, *args, **kwargs)
             self.tables[table_name] = t
         return t
 
@@ -209,9 +223,10 @@ class Table:
     >>> row6['id']
     6
     """
-    def __init__(self, name: str, convert: bool = True):
+    def __init__(self, name: str, convert: bool = True, convert_exclude: list or None=None):
         self.name = name
         self.convert = convert  # Конвертировать ли переменные в числа автоматически
+        self.convert_exclude = convert_exclude or []
         self.index_count = 1
         self.meta_data = {}  # type: Dict[int, dict]
 
@@ -225,10 +240,16 @@ class Table:
             # try to convert values to int
             if self.convert:
                 for k, v in row.items():
+                    if k in self.convert_exclude:
+                        continue
+
                     try:
-                        row[k] = float(v)
-                        row[k] = int(v)
-                    except Exception:
+                        if isinstance(row[k], str):
+                            if "." in row[k]:
+                                row[k] = float(v)
+                            else:
+                                row[k] = int(v)
+                    except ValueError:
                         pass
             # check index
             if "id" in row:
@@ -307,8 +328,11 @@ class Table:
         except KeyError:
             raise DBIndexError(self, 'get', "Элемента с таким id ({}) не найдено".format(_id))
 
+    def __len__(self):
+        return len(self.meta_data)
+
     def __str__(self):
-        return "<MemNRDB.Table:{}>, {} rows".format(self.name, len(self.data))
+        return "<MemNRDB.Table:{}>, {} rows".format(self.name, len(self))
 
 
 class Row:
@@ -473,11 +497,17 @@ class Query:
         """ Пропускает все записи """
         return True
 
+    def exist(self) -> 'Query':
+        """ Запрос будет проверять на существование поля """
+        new_q = copy.copy(self)
+        new_q.test_method_name = "_exist_field"
+        return new_q
+
     def _exist_field(self, row: dict or Row) -> bool:
         """ Проверяет, существует ли поле """
         return self._get_val_by_path(row) is not None
 
-    def _get_val_by_path(self, row: dict or Row) -> dict or Row or None:
+    def _get_val_by_path(self, row: dict or Row) -> object or None:
         """ Возвращает значение нужного поля по адресу в self.path, если оно есть """
         _row = row
         for p in self.path:
@@ -509,7 +539,7 @@ class Query:
     def __getitem__(self, item: object) -> 'Query':
         if self.test_method_name:
             raise DBException("Подзапрос уже сгенерирован, невозможно получить из него новый")
-        q_new = Query(self.table_name)
+        q_new = copy.copy(self)
         q_new.path = self.path + [item]
         return q_new
 
@@ -560,6 +590,11 @@ class Query:
         # TODO: разобраться, почему не работает
         return self._comparison_filter_generator("__is_not__", other)
 
+    def __copy__(self) -> 'Query':
+        new_q = Query(self.table_name)
+        new_q.path = self.path[:]
+        return new_q
+
 
 class QueryLogic(Query):
     """ Класс запрос для работы с & и | (логическое `и` и `или` в данном контексте)"""
@@ -576,3 +611,6 @@ class QueryLogic(Query):
 
     def _check(self, row: dict) -> bool:
         return (self.mt if (self.left._check(row)) else self.mf)(self.right._check(row))
+
+    def __copy__(self) -> 'QueryLogic':
+        return QueryLogic(self.method_name, self.left, self.right)
