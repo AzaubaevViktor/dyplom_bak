@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 from typing import Dict, TypeVar, Iterable
@@ -49,7 +50,7 @@ class MemNRDBEncoder(json.JSONEncoder):
         if isinstance(o, MemNRDB):
             return {'__MemNRDB__': True, '__tables__': o.tables}
         if isinstance(o, Table):
-            return o.data
+            return list(o.meta_data.values())
         return json.JSONEncoder.default(self, o)
 
 
@@ -111,10 +112,15 @@ class MemNRDB:
             self.tables[table_name] = t
         return t
 
+    def query(self, query: 'Query'):
+        new_q = copy.copy(query)
+        new_q.db = self
+        return new_q
+
     def __str__(self):
         return "<MemNRDB>, {} tables".format(len(self.tables))
 
-    def serialize(self, file_name: str, pretty=False):
+    def serialize(self, file_name: str, pretty: bool=False):
         """
         Загружает БД в файл
         :param file_name: Имя файла БД
@@ -205,7 +211,6 @@ class Table:
     """
     def __init__(self, name: str, convert: bool = True):
         self.name = name
-        self.data = list()  # type: List[dict]
         self.convert = convert  # Конвертировать ли переменные в числа автоматически
         self.index_count = 1
         self.meta_data = {}  # type: Dict[int, dict]
@@ -238,7 +243,6 @@ class Table:
                     self.index_count += 1
                 _id = row["id"] = self.index_count
             # add row in table
-            self.data.append(row)
             self.meta_data[_id] = row
         else:
             raise DBTypeError(self, "insert", 'row', row, dict)
@@ -288,7 +292,7 @@ class Table:
           T <= Row: Применять T к записи
         :return:
         """
-        for row in self.data:
+        for row in self.meta_data.values():
             yield _apply_class(row, to_class)
 
     def get(self, _id: int, to_class: bool or 'Row'=False) -> dict or 'Row':
@@ -302,11 +306,6 @@ class Table:
             return _apply_class(self.meta_data[_id], to_class)
         except KeyError:
             raise DBIndexError(self, 'get', "Элемента с таким id ({}) не найдено".format(_id))
-
-    def query(self, q: "Query") -> 'Query':
-        """ Вернуть запрос с прикреплённой таблицой """
-        q.table = self
-        return q
 
     def __str__(self):
         return "<MemNRDB.Table:{}>, {} rows".format(self.name, len(self.data))
@@ -352,9 +351,9 @@ class Row:
     def __setitem__(self, key, value):
         self._data[key] = value
 
-    def __getattr__(self, item):
-        if '_data' == item:
-            return self._raw_data
+    def __getattr__(self, item: str):
+        if '_' == item[0]:
+            return super().__getattribute__(item)
         else:
             return self._data.get(item, None)
 
@@ -374,14 +373,14 @@ class Query:
     |    `--* поле field2 существует и не равно 'string'
     и
     `---* поле field3 сществует
-    >>> q = ((Query("field") < 123) | (Query("field2") != "string")) & (Query("field3"))
+    >>> q = ((Query("table").field < 123) | (Query("table").field2 != "string")) & (Query("table").field3)
 
-    Можно указать таблицу руками:
-    >>> t = Table('table')
-    >>> q.table = t
+    Можно указать БД руками:
+    >>> db = MemNRDB()
+    >>> q.db = db
 
-    Либо передать запрос таблице:
-    >>> q_t = t.query(q)
+    Либо передать запрос базе данных:
+    >>> q_t = db.query(q)
 
     # TODO: Написать нормальный вывод, с list и что происходит внутри
 
@@ -394,7 +393,12 @@ class Query:
     <generator object Query.limit at 0x...>
 
     Всё составление запроса можно уместить в одну строчку:
-    >>> t.query(Query("field") < 123).all() # doctest: +ELLIPSIS
+    >>> db.query(Query("table").field < 123).all() # doctest: +ELLIPSIS
+    <generator object Query.all at 0x...>
+
+    Или так для удобства:
+    >>> User = Query("User")
+    >>> db.query((User.age > 10) & (User.sex == 0)).all() # doctest: +ELLIPSIS
     <generator object Query.all at 0x...>
 
     Также можно преобразовывать результаты в нужный класс:
@@ -408,16 +412,14 @@ class Query:
     <generator object Query.limit at 0x...>
 
     """
-    @classmethod
-    def ANY(cls) -> 'QueryAny':
-        """ Возвращает экземпляр класса-запроса, которые пропускает любое поле """
-        return QueryAny()
 
-    def __init__(self, name: str or object, table: "Table" = None):
-        self.path = name.split(".") if isinstance(name, str) else [name]  # адрес поля
-        self.test_method_name = "_exist_field"  # метод: который будет вызываться у значения для проверки
+    def __init__(self, table: "Table" or str = None):
+        self.path = []  # адрес поля
+        self.test_method_name = None  # метод, который будет вызываться у значения для проверки
         self.test_value = None  # значение проверки
-        self.table = table  # ассоциированная таблица, из которой берутся записи
+        self.db = None  # ассоциированная база данных
+        # ассоциированная таблица, из которой берутся записи
+        self.table_name = table.name if isinstance(table, Table) else table
 
     def __call__(self, row: dict) -> dict or None:
         """
@@ -432,35 +434,44 @@ class Query:
         else:
             return None
 
-    def all(self, table: "Table" = None, to_class: bool or Row=False) -> Iterable[Row]:
+    def all(self, db: MemNRDB or None = None, to_class: bool or Row=False) -> Iterable[Row]:
         """
         Возвращает все прошедшие фильтр записи
-        :param table: таблица, если не задана
+        :param db: База данных, с которой будет работать запрос
         :param to_class: преобразование в класс
         :return: записи
         """
-        if self.table and table:
-            raise DBException("Таблица уже задана")
-        table = table or self.table
+        if self.db and db:
+            raise DBException("База данных уже задана")
+        if not self.db and not db:
+            raise DBException("База данных не задана!")
+
+        db = self.db or db
+        table = db[self.table_name]
 
         for row in table.rows():
             r = self(row)
             if r is not None:
                 yield _apply_class(r, to_class)
 
-    def limit(self, count: int, table: "Table" = None, to_class: bool or Row=False) -> Iterable[Row]:
+    def limit(self, count: int, db: MemNRDB = None, to_class: bool or Row=False) -> Iterable[Row]:
         """
         Возвращает count записей, прошедших фильтр
         :param count: кол-во записей, которые нужно вернуть
-        :param table: таблица, если не задана
+        :param db: База данных, если не задана
         :param to_class: преобразование в класс
         :return: записи
         """
-        for row in self.all(table=table, to_class=to_class):
+        for row in self.all(db=db, to_class=to_class):
             yield row
             count -= 1
             if 0 == count:
                 return
+
+    @staticmethod
+    def _any(row: dict or Row) -> bool:
+        """ Пропускает все записи """
+        return True
 
     def _exist_field(self, row: dict or Row) -> bool:
         """ Проверяет, существует ли поле """
@@ -494,6 +505,18 @@ class Query:
                     return False
                 return True if res else False
         return False
+
+    def __getitem__(self, item: object) -> 'Query':
+        if self.test_method_name:
+            raise DBException("Подзапрос уже сгенерирован, невозможно получить из него новый")
+        q_new = Query(self.table_name)
+        q_new.path = self.path + [item]
+        return q_new
+
+    def __getattr__(self, item: str) -> 'Query':
+        if "_" == item[0]:
+            return super(Query, self).__getattribute__(item)
+        return self[item]
 
     def __and__(self, other: "Query") -> "QueryLogic":
         if not isinstance(other, Query):
@@ -538,21 +561,16 @@ class Query:
         return self._comparison_filter_generator("__is_not__", other)
 
 
-class QueryAny(Query):
-    """ Класс-запрос для запроса 'любой' """
-    def __init__(self):
-        super().__init__("__any_not_used__")
-
-    def _check(self, row: dict) -> bool:
-        return True
-
-
 class QueryLogic(Query):
     """ Класс запрос для работы с & и | (логическое `и` и `или` в данном контексте)"""
     def __init__(self, method_name: str, left: Query, right: Query):
         self.method_name = method_name
         self.left = left
         self.right = right
+        self.db = None
+        if left.table_name != right.table_name:
+            raise NotImplementedError("Невозможно создавать запросы из разных таблиц")
+        self.table_name = left.table_name
         self.mt = getattr(True, self.method_name)
         self.mf = getattr(False, self.method_name)
 

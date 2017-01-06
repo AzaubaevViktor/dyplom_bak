@@ -6,25 +6,25 @@ from mem_nr_db import Query, QueryLogic, MemNRDB, Table, DBException, Row, DBTyp
 class TestDB(unittest.TestCase):
 
     def test_filter_comp(self):
-        q = Query("test") == 10  # type: Query
+        Q = Query("table_name")
+        q = Q.test == 10  # type: Query
         self.assertIsInstance(q, Query)
-        ch = q._check
 
-        def test_q(q):
-            self.assertTrue(ch({"test": 10}))
-            self.assertFalse(ch({"test": 15}))
-            self.assertFalse(ch({"test": None}))
-            self.assertTrue(ch({"test": 10.}))
-            self.assertFalse(ch({"test": []}))
-            self.assertFalse(ch({"test": "10"}))
-            self.assertFalse(ch({"test": True}))
-            self.assertFalse(ch({12: 10}))
-            self.assertFalse(ch({"test_test": 10}))
-            self.assertFalse(ch({}))
+        def test_q(check_func):
+            self.assertTrue(check_func({"test": 10}))
+            self.assertFalse(check_func({"test": 15}))
+            self.assertFalse(check_func({"test": None}))
+            self.assertTrue(check_func({"test": 10.}))
+            self.assertFalse(check_func({"test": []}))
+            self.assertFalse(check_func({"test": "10"}))
+            self.assertFalse(check_func({"test": True}))
+            self.assertFalse(check_func({12: 10}))
+            self.assertFalse(check_func({"test_test": 10}))
+            self.assertFalse(check_func({}))
 
-        test_q(q)
+        test_q(q._check)
 
-        q = Query(12) == True  # type: Query
+        q = Query("table_name")[12] == True  # type: Query
         self.assertIsInstance(q, Query)
         ch = q._check
 
@@ -40,7 +40,7 @@ class TestDB(unittest.TestCase):
         self.assertFalse(ch({"12": True}))
         self.assertFalse(ch({}))
 
-        q = Query("a") < 10  # type: Query
+        q = Query("table_name").a < 10  # type: Query
         self.assertIsInstance(q, Query)
         ch = q._check
 
@@ -49,7 +49,7 @@ class TestDB(unittest.TestCase):
         self.assertFalse(ch({"a": 15}))
 
     def test_filter_logic(self):
-        q = (Query("a") < 10) & (Query("b") >= 20)  # type: QueryLogic
+        q = (Query("table").a < 10) & (Query("table").b >= 20)  # type: QueryLogic
         self.assertIsInstance(q, QueryLogic)
         ch = q._check
 
@@ -64,7 +64,7 @@ class TestDB(unittest.TestCase):
         self.assertFalse(ch({}))
         self.assertFalse(ch({"a": 0, "b": None}))
 
-        q = (Query("a") < 10) | (Query("b") >= 20)  # type: QueryLogic
+        q = (Query("table").a < 10) | (Query("table").b >= 20)  # type: QueryLogic
         self.assertIsInstance(q, QueryLogic)
         ch = q._check
 
@@ -101,10 +101,22 @@ class TestDB(unittest.TestCase):
         t.insert({"b": 20})
         t.insert({})
 
-        data = list(t.query((Query("a") < 15) & (Query("b") > 15)).all())
+        q = (Query("test").a < 15) & (Query("test").b > 15)
+
+        data = list(db.query(q).all())
         self.assertEqual(len(data), 4)
         for r in data:
             self.assertTrue((r['a'] < 15) and (r['b'] > 15))
+
+        data_l = list(db.query(q).limit(2))
+        self.assertEqual(len(data_l), 2)
+
+        data_l = list(db.query(q).limit(5))
+        self.assertEqual(len(data_l), 4)
+
+        with self.assertRaises(DBException):
+            q = db.query(Query("tost").field < 10)
+            list(q.all())
 
     def test_db_index(self):
         db = MemNRDB()
@@ -127,14 +139,14 @@ class TestDB(unittest.TestCase):
         db.init_table("tost")
 
         t = db['tost']
-        row2 = t.insert({"id": 2})
-        row1 = t.insert({"hello": "world", "zzz": "xxx"})
-        row3 = t.insert({"world": "hello"})
+        t.insert({"id": 2})
+        t.insert({"hello": "world", "zzz": "xxx"})
+        t.insert({"world": "hello"})
         with self.assertRaises(DBException):
             t.insert({"id": None, 'c': 4})
 
         with self.assertRaises(DBException):
-            t.update({"id": 4, "val": 123})
+            t.update({"id": 4, "val": 123, "prev_val": 456})
 
         t.update({"id": 1, "hello": "WORLD", "xxx": "zzz"})
         row = t.get(1)
@@ -149,6 +161,18 @@ class TestDB(unittest.TestCase):
 
         with self.assertRaises(DBException):
             t.update({"id": None, "yyY": 123})
+
+        t.get(3)['prev_val'] = 456
+
+        t.ins_upd({"id": 3, "val": 321})
+        t.ins_upd({"id": 98, "value": 12345})
+
+        row = t.get(3)
+        self.assertEqual(row['val'], 321)
+        self.assertEqual(row['prev_val'], 456)
+
+        row98 = t.get(98)
+        self.assertEqual(row98['value'], 12345)
 
     def test_row(self):
         db = MemNRDB()
@@ -182,7 +206,6 @@ class TestDB(unittest.TestCase):
         self.assertEqual(row['unk'], 15)
         self.assertEqual(row.unk1, 16)
         self.assertEqual(row['unk1'], 16)
-
 
     def test_assert(self):
         db = MemNRDB()

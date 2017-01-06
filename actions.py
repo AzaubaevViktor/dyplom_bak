@@ -69,7 +69,7 @@ class Actions:
         print("===============================")
         user_count = 0
         users = []
-        for user in self.users.query(Query.ANY()).all(to_class=User):  # type: User
+        for user in self.users.rows(to_class=User):  # type: User
             user_count += 1
             users.append(user)
             if 25 == len(users):
