@@ -4,6 +4,10 @@ import sys
 
 
 class MetaEnv(type):
+    """
+    Мета класс для Env
+    Класс достёт из os.environ значения переменных
+    """
     _cache = {}
 
     @classmethod

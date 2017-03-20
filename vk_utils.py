@@ -66,7 +66,7 @@ class API(VkAPI):
 
 
 class Request(VkRequest):
-    """ Модуль-обвязка для vk.Request, обрабатывающая ошики """
+    """ Модуль-обвязка для vk.Request, обрабатывающая ошибки """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = logging.getLogger("VkUtils.VkRequest-Bind")
@@ -80,9 +80,10 @@ class Request(VkRequest):
                 return super().__call__(*args, **kwargs)
             except VkAPIError as e:
                 if 6 == e.code:
-
                     self.log.info("Error: \n  %s", e.message)
                     sleep(1)
+                else:
+                    raise e
 
 
 def address_to_dict(addr: str) -> dict:
@@ -105,7 +106,7 @@ class VkInit:
     def __init__(self, app_id: str, token_file_name: str):
         """
         :param app_id: ID приложения
-        :param token_file_name: расположение файла с токеном полбзователя
+        :param token_file_name: расположение файла с токеном пользователя
         """
         self._app_id = app_id
         self._token_file_name = token_file_name
@@ -231,8 +232,8 @@ class User:
     def __str__(self):
         return "<User#{}>: {} {}".format(
             self.id,
-            self.row.get('first_name', "---"),
-            self.row.get('last_name', "---")
+            self.row.get('first_name', "???"),
+            self.row.get('last_name', "???")
         )
 
 
