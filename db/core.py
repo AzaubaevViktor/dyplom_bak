@@ -1,6 +1,5 @@
-from typing import Dict, Callable
+from typing import Dict
 from typing import List
-import re
 
 from copy import copy
 
@@ -9,7 +8,7 @@ class DB:
     def __init__(self):
         self.tables = {}  # type: Dict[str, Table]
 
-    def create_table(self, table_name):
+    def create_table(self, table_name) -> 'Table':
         new_table = Table()
         self.tables[table_name] = new_table
         return new_table
@@ -24,9 +23,10 @@ class Table:
         self.indexes.append(index)
 
     def append(self, row: dict):
-        self.rows.append(row)
         for index in self.indexes:
             index(row)
+        self.rows.append(row)
+        return row
 
     def __iter__(self):
         return iter(self.rows)
@@ -70,6 +70,12 @@ class Filter:
 
     def __eq__(self, other) -> 'Filter':
         return self.__method_base__("__eq__", other)
+
+    def __ge__(self, other) -> 'Filter':
+        return self.__method_base__("__ge__", other)
+
+    def __gt__(self, other) -> 'Filter':
+        return self.__method_base__("__gt__", other)
 
     def _check_row(self, row):
         result = [row]
@@ -116,30 +122,36 @@ class Index:
         self.unique = unique
         self.not_none = not_none
         self.auto_increment = auto_increment
-        self.data = {None: []}  # type: Dict[object, List[dict]]
+        self.data = {}  # type: Dict[object, List[dict]]
 
     def __call__(self, row: dict):
-        if self.field in row:
-            value = row[self.field]
-            if value not in self.data:
-                self.data[value] = []
+        value = row.get(self.field, None)
 
+        # Check NotNone flag
+        if self.not_none and value is not None:
+            raise ValueError("Field `{}` is required; row: `{}`".format(
+                self.field,
+                row
+            ))
+
+        # Check Unique flag
+        if self.unique:
             if value in self.data:
-                if len(self.data[value]) and self.unique:
-                    raise ValueError(
-                        "Duplicate value: row `{}`, field `{}`, value `{}`".format(
-                            row,
-                            self.field,
-                            value
-                        )
-                    )
-                self.data[value].append(row)
-        else:
-            if self.not_none:
                 raise ValueError(
-                    "Duplicate value: row `{}`, field `{}`".format(
+                    "Duplicate value: row `{}`, field `{}`, value `{}`".format(
                         row,
-                        self.field
+                        self.field,
+                        value
                     )
                 )
-            self.data[None].append(row)
+
+        # Check autoincrement flag
+        if self.auto_increment:
+            if value is None:
+                max_val = max(self.data.keys())
+                row[self.field] = max_val + 1
+
+        # Add index dara
+        value = row.get(self.field, None)  # may be updated
+        self.data.setdefault(value, [])
+        self.data[value].append(row)

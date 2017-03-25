@@ -3,7 +3,7 @@ from db.core import *
 db = DB()
 table = db.create_table("test")
 table.create_index(
-    Index('id', unique=True, not_none=True)
+    Index('id', unique=True, auto_increment=True)
 )
 
 table.append(
@@ -16,6 +16,10 @@ table.append(
 
 table.append(
     {'id': 2, 'data': [[3, 2, 1], 2, [5, 6, 7]]}
+)
+
+table.append(
+    {'data': []}
 )
 
 
