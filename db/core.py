@@ -1,3 +1,5 @@
+import abc
+
 from typing import Dict
 from typing import List
 
@@ -17,22 +19,51 @@ class DB:
 class Table:
     def __init__(self):
         self.rows = []  # type: List[dict]
-        self.indexes = []  # type: List[Index]
+        self.indexes = {}  # type: Dict[str, Index]
 
     def create_index(self, index: 'Index'):
-        self.indexes.append(index)
+        self.indexes[index.field] = index
 
     def append(self, row: dict):
-        for index in self.indexes:
+        for index in self.indexes.values():
             index(row)
         self.rows.append(row)
         return row
+
+    def get(self, field, value):
+        if field in self.indexes:
+            return self.indexes[field].get(value)
+        else:
+            raise ValueError("Index for `{}` doesn't exist. Try Filters".format(
+                field
+            ))
 
     def __iter__(self):
         return iter(self.rows)
 
 
-class Filter:
+class FilterBase(metaclass=abc.ABCMeta):
+    def _check_type(self, other: object):
+        if not isinstance(other, FilterBase):
+            raise ValueError("`{}` other must be Filter, but `{}`".format(
+                other,
+                type(other)
+            ))
+
+    def __and__(self, other: 'FilterBase') -> 'FilterLogic':
+        self._check_type(other)
+        return FilterLogic(self, other, "__and__")
+
+    def __or__(self, other: 'FilterBase') -> 'FilterLogic':
+        self._check_type(other)
+        return FilterLogic(self, other, "__or__")
+
+    @abc.abstractmethod
+    def check_row(self, row: dict):
+        pass
+
+
+class Filter(FilterBase):
     def __init__(self):
         self.lookups = []
         self.method = ""
@@ -77,7 +108,10 @@ class Filter:
     def __gt__(self, other) -> 'Filter':
         return self.__method_base__("__gt__", other)
 
-    def _check_row(self, row):
+    def __lt__(self, other) -> 'Filter':
+        return self.__method_base__("__lt__", other)
+
+    def check_row(self, row) -> bool:
         result = [row]
         # check values
 
@@ -108,7 +142,23 @@ class Filter:
 
     def __call__(self, rows):
         for row in iter(rows):
-            if self._check_row(row):
+            if self.check_row(row):
+                yield row
+
+
+class FilterLogic(FilterBase):
+    def __init__(self, a: FilterBase, b: FilterBase, method: str):
+        self.a = a
+        self.b = b
+        self.method = method
+
+    def check_row(self, row):
+        method = getattr(self.a.check_row(row), self.method)
+        return method(self.b.check_row(row))
+
+    def __call__(self, rows):
+        for row in iter(rows):
+            if self.check_row(row):
                 yield row
 
 
@@ -123,6 +173,9 @@ class Index:
         self.not_none = not_none
         self.auto_increment = auto_increment
         self.data = {}  # type: Dict[object, List[dict]]
+
+    def get(self, value):
+        return self.data[value]
 
     def __call__(self, row: dict):
         value = row.get(self.field, None)

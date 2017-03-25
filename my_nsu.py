@@ -1,5 +1,7 @@
 import re
 
+from lxml import html
+
 
 def parse_learn_info(s):
     original_s = s
@@ -92,9 +94,11 @@ def parse_learn_info(s):
 
 
 class Person:
-    def __init__(self, _id):
+    url_fmt = 'http://my.nsu.ru/public/studentinfo.jsp?public.studentinfo.ref={}'
+
+    def __init__(self, _id: int):
         self.id = _id
-        self.url = 'http://my.nsu.ru/public/studentinfo.jsp?public.studentinfo.ref={}'.format(_id)
+        self.url = self.url_fmt.format(_id)
         self.parsers = {
             'info': self.parser_person_info,
             'photo': self.parser_person_photo

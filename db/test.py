@@ -19,13 +19,13 @@ table.append(
 )
 
 table.append(
-    {'data': []}
+    {'data': [0, 0, 3]}
 )
 
 
-f = Filter().data[2] == 3
+f1 = Filter().data[2] == 3
+f2 = Filter().id < 2
 
-result = f(table)
-
-print(result)
-print(list(result))
+print(list(f1(table)))
+print(list(f2(table)))
+print(list((f1 | f2)(table)))
