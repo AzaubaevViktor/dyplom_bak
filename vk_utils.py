@@ -9,7 +9,7 @@ from vk.api import Request as VkRequest
 from vk.exceptions import VkAPIError
 
 from mem_nr_db import Row, Table
-
+from utils import extend_nested_list
 
 logging.getLogger("VkUtils").setLevel(logging.WARNING)
 
@@ -40,7 +40,17 @@ class API(VkAPI):
         for user_data in users_data:
             yield User(user_data)
 
-    def get_wall_posts(self, users: List["User"], count: int, from_time=-1) -> Iterable[Tuple[str, str, str, int, int]]:
+    def get_wall_posts(self, users: List['User'], count=100, from_time=-1) -> Iterable['Post']:
+        answer = self.execute.wallWatch(
+            id_list=[user.id for user in users],
+            count=count
+        )
+
+        for row in extend_nested_list(answer):
+            yield Post(row)
+
+
+    def _get_wall_posts(self, users: List["User"], count: int, from_time=-1) -> Iterable[Tuple[str, str, str, int, int]]:
         """
         Возвращает посты
         :param users: Список пользователей
@@ -168,6 +178,12 @@ class VkInit:
             except Exception:
                 print("Неверный адрес. Попробуй ещё раз!")
         return data['access_token']
+
+
+class Post:
+    def __init__(self, row: dict):
+        self.row = row
+
 
 
 class Group:

@@ -149,4 +149,4 @@ ENV/
 
 # Ipython Notebook
 *.ipynb
-.token_vk
+.vk_token

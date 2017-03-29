@@ -1,6 +1,18 @@
 import os
 
 import sys
+from typing import Iterable
+
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+
+
+def extend_nested_list(l: list) -> Iterable:
+    for item in l:
+        if isinstance(item, list):
+            yield from extend_nested_list(item)
+        else:
+            yield item
 
 
 class MetaEnv(type):

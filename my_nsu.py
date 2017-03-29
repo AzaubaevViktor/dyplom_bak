@@ -111,7 +111,7 @@ class Person:
         i = text.find('(')
 
         if -1 != i:
-            data['name'] = text[:i].strip().split(" ")
+            data['name'] = text[:i].strip()
             data['birthday'] = text[i:][1:-1]
         else:
             data['name'] = text.strip()

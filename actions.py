@@ -10,7 +10,6 @@ import logging
 from mem_nr_db import MemNRDB, DBException, Query
 from utils import Env, print_line
 from vk_utils import VkInit, Group, User
-import sys
 
 
 class Actions:
