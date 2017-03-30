@@ -4,7 +4,7 @@ from time import sleep
 
 import vk
 from typing import List, Iterable, Tuple
-from utils import extend_nested_list
+from .utils import extend_nested_list
 from vk import API as VkAPI
 from vk.api import Request as VkRequest
 from vk.exceptions import VkAPIError
