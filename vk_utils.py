@@ -1,4 +1,5 @@
 import random
+from pprint import pprint
 from time import sleep
 from typing import Iterator, List, Generator, Generic, Iterable, Tuple
 
@@ -183,7 +184,19 @@ class VkInit:
 class Post:
     def __init__(self, row: dict):
         self.row = row
+        self.date = self.row['date']
+        self.owner_id = self.row['owner_id']
+        self.id = self.row['id']
+        self.text = self.row['text']
+        self.reposts = self.row['reposts']['count']
+        self.likes = self.row['likes']['count']
 
+    def _find_source(self):
+        copy_history = self.row.get('copy_history', {})
+        self.source = {
+            'owner_id': copy_history.get('owner_id'),
+            'id': copy_history.get('id')
+        }
 
 
 class Group:
@@ -213,12 +226,20 @@ class User:
     """ Класс-обёртка над пользователем VK """
     def __init__(self, row: dict):
         self.row = row
+        self.id = self.row['id']
+        self.sex = self.row['sex']
+        self.first_name = self.row['first_name']
+        self.last_name = self.row['last_name']
+        self._bdate = self.row.get('bdate')
+        self.university = self.row.get('university', -1)
+        self.graduation = self.row.get('graduation', -1)
+
         if 'cost' not in self.row:
             self.row['cost'] = {}
 
     @property
-    def id(self) -> int:
-        return self.row['id']
+    def in_NSU(self):
+        return 671 == self.university
 
     def get_friends(self):
         return NotImplemented
