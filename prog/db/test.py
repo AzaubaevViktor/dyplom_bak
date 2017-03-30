@@ -1,5 +1,3 @@
-from db.core import *
-
 db = DB()
 table = db.create_table("test")
 table.create_index(

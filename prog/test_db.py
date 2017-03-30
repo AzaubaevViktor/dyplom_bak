@@ -1,6 +1,6 @@
 import unittest
 
-from mem_nr_db import Query, QueryLogic, MemNRDB, Table, DBException, Row, DBTypeError
+from prog.mem_nr_db import Query, QueryLogic, MemNRDB, Table, DBException, Row, DBTypeError
 
 
 class TestDB(unittest.TestCase):

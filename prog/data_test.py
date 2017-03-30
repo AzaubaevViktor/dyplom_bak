@@ -1,11 +1,8 @@
 import pickle
-import re
 
-from my_nsu import parse_learn_info
+from prog.my_nsu import parse_learn_info
 
 obj = pickle.load(open("data.pckl", "rb"))
-
-import itertools
 
 parse_learn_info('выпускница группы 312 (1983г.), ММФ, специальность (1988 год выпуска)')
 

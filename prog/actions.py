@@ -1,15 +1,13 @@
+import datetime
 import json
+import logging
 import os
-
 import time
 
-import datetime
-
-import logging
-
-from mem_nr_db import MemNRDB, DBException, Query
 from utils import Env, print_line
 from vk_utils import VkInit, Group, User
+
+from prog.mem_nr_db import MemNRDB
 
 
 class Actions:

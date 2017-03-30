@@ -1,8 +1,7 @@
 import argparse
-
 import logging
 
-from actions import Actions
+from prog.actions import Actions
 
 logging.basicConfig(
     level=logging.DEBUG,

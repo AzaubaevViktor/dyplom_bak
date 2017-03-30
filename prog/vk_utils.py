@@ -1,16 +1,15 @@
-import random
-from pprint import pprint
-from time import sleep
-from typing import Iterator, List, Generator, Generic, Iterable, Tuple
-
 import logging
+import random
+from time import sleep
+
 import vk
+from typing import List, Iterable, Tuple
+from utils import extend_nested_list
 from vk import API as VkAPI
 from vk.api import Request as VkRequest
 from vk.exceptions import VkAPIError
 
-from mem_nr_db import Row, Table
-from utils import extend_nested_list
+from prog.mem_nr_db import Table
 
 logging.getLogger("VkUtils").setLevel(logging.WARNING)
 
