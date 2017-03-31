@@ -150,3 +150,5 @@ ENV/
 # Ipython Notebook
 *.ipynb
 .vk_token
+db.sqlite3
+.idea
