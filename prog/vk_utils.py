@@ -1,114 +1,16 @@
 import logging
 import random
-from time import sleep
 
 import vk
-from typing import List, Iterable, Tuple
-from .utils import extend_nested_list
-from vk import API as VkAPI
-from vk.api import Request as VkRequest
-from vk.exceptions import VkAPIError
+from typing import List, Iterable
 
 from prog.mem_nr_db import Table
 
 logging.getLogger("VkUtils").setLevel(logging.WARNING)
 
 
-class API(VkAPI):
-    """
-    Модуль-обвязка для vk.API
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.log = logging.getLogger("VkUtils.VkAPI-Bind")
-
-    def __getattr__(self, method_name: str):
-        return Request(self, method_name)
-
-    def get_users(self, ids: int or List[int]):
-        """
-        Выполняет запрос к API VK и получает пользователей VK
-        :param self:
-        :param ids:
-        :return:
-        """
-        users_data = self.users.get(
-            user_ids=ids,
-            fields=['bdate', 'city', 'connections', 'education', 'exports', 'personal', 'relations', 'sex',
-                    'universities']
-        )
-        for user_data in users_data:
-            yield User(user_data)
-
-    def get_wall_posts(self, users: List['User'], count=100, from_time=-1) -> Iterable['Post']:
-        answer = self.execute.wallWatch(
-            id_list=[user.id for user in users],
-            count=count
-        )
-
-        for row in extend_nested_list(answer):
-            yield Post(row)
 
 
-    def _get_wall_posts(self, users: List["User"], count: int, from_time=-1) -> Iterable[Tuple[str, str, str, int, int]]:
-        """
-        Возвращает посты
-        :param users: Список пользователей
-        :param count: сколько постов дергать
-        :param from_time: и с какого времени
-        :return: Посты
-        """
-        # TODO: переделать в посты
-        answer = self.execute.wallWatch(
-            id_list=[user.id for user in users],
-            count=count
-        )
-        for user, posts in zip(users, answer):  # type: (User, List[dict] | List[None])
-            if posts:
-                for item in posts:
-                    dt = item['date']
-                    text = item['text']
-                    likes = item['likes']['count']
-                    reposts = item['reposts']['count']
-
-                    if -1 != from_time and text and dt > from_time:
-                        yield user, dt, text, likes, reposts
-
-
-class Request(VkRequest):
-    """ Модуль-обвязка для vk.Request, обрабатывающая ошибки """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.log = logging.getLogger("VkUtils.VkRequest-Bind")
-
-    def __getattr__(self, method_name):
-        return Request(self._api, self._method_name + '.' + method_name)
-
-    def __call__(self, *args, **kwargs):
-        while True:
-            try:
-                return super().__call__(*args, **kwargs)
-            except VkAPIError as e:
-                if 6 == e.code:
-                    self.log.info("Error: \n  %s", e.message)
-                    sleep(1)
-                else:
-                    raise e
-
-
-def address_to_dict(addr: str) -> dict:
-    """
-    Достаёт из адреса GET параметры
-    :param addr: адрес
-    :return: список GET-параметров
-    """
-    # noinspection PyTypeChecker
-    return dict(
-        x.split("=") for x in
-        addr.split("/")[-1]
-            .split("#")[-1]
-            .split("&")
-    )
 
 
 class VkInit:
