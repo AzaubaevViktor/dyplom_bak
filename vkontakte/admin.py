@@ -30,7 +30,12 @@ class VkUserAdmin(admin.ModelAdmin):
 
 @admin.register(VkGroup)
 class VkGroupAdmin(admin.ModelAdmin):
-    fields = ('users', )
+    fields = ('row', 'name', 'users', )
+    list_display = (
+        'id', 'name', 'users_count'
+    )
+
+
 
 
 @admin.register(VkPost)

@@ -1,3 +1,4 @@
+from pprint import pprint
 from time import sleep
 
 from typing import List, Iterable
@@ -6,7 +7,7 @@ from vk import API as VkAPI
 from vk.api import Request as VkRequest
 from vk.exceptions import VkAPIError
 
-from .models import VkUser, VkPost
+from .models import VkUser, VkPost, VkGroup
 from .utils import extend_nested_list
 
 
@@ -51,6 +52,15 @@ class API(VkAPI):
             post.find_user()
             post.save()
             yield post
+
+    def get_groups(self, group_ids: List[int or str]):
+        answer = self.groups.getById(
+            group_ids=group_ids,
+        )
+        for row in answer:
+            group = VkGroup(row=row)
+            group.save()
+            yield group
 
 
 class Request(VkRequest):

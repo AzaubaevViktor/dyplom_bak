@@ -12,6 +12,10 @@ class VkConnector(models.Model):
     app_id = models.CharField(max_length=50)
     _token = models.CharField(max_length=200)
 
+    @classmethod
+    def default(cls) -> 'VkConnector':
+        return cls.objects.get(id=1)
+
     @property
     def token(self) -> str:
         """
@@ -114,7 +118,20 @@ class VkUser(models.Model):
 
 
 class VkGroup(models.Model):
+    row = JSONField()
+    name = models.CharField(max_length=100)
     users = models.ManyToManyField(VkUser, related_name='groups')
+
+    def _fill(self):
+        self.id = self.row['id']
+        self.name = self.row['name']
+
+    def save(self, *args, **kwargs):
+        self._fill()
+        super().save(*args, **kwargs)
+
+    def users_count(self):
+        return self.users.count()
 
 
 class VkPost(models.Model):
