@@ -3,6 +3,7 @@ from django.db import models
 import random
 
 # Create your models here.
+from .utils import parse_date
 
 
 class VkConnector(models.Model):
@@ -80,6 +81,7 @@ class VkUser(models.Model):
     bdate = models.DateField(null=True)
     university = models.IntegerField(default=0)
     graduation = models.IntegerField(default=0)
+    faculty = models.IntegerField(default=0)
     twitter = models.CharField(max_length=70, null=True)
 
     def save(self, *args, **kwargs):
@@ -92,8 +94,10 @@ class VkUser(models.Model):
         self.first_name = self.row['first_name']
         self.last_name = self.row['last_name']
         self._bdate = self.row.get('bdate')
+        self.bdate = parse_date(self._bdate)
         self.university = int(self.row.get('university', 0))
         self.graduation = int(self.row.get('graduation', 0))
+        self.faculty = int(self.row.get('faculty', 0))
 
     @property
     def in_NSU(self):

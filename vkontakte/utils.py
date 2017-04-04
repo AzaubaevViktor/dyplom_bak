@@ -1,10 +1,11 @@
+from datetime import datetime
 import os
 
 import sys
 from typing import Iterable
 
-from dotenv import load_dotenv, find_dotenv
-load_dotenv(find_dotenv())
+# from dotenv import load_dotenv, find_dotenv
+# load_dotenv(find_dotenv())
 
 
 def extend_nested_list(l: list) -> Iterable:
@@ -46,6 +47,17 @@ def print_line(*args, **kwargs):
     print("\r", end='')
     print(*args, **kwargs, end='')
     sys.stdout.flush()
+
+
+def parse_date(s: str):
+    if not s:
+        return None
+    try:
+        dt = datetime.strptime(s, "%d.%m.%Y")
+    except ValueError:
+        dt = datetime.strptime(s, "%d.%m")
+    return dt
+    return dt
 
 
 if '__main__' == __name__:

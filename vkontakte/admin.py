@@ -23,6 +23,10 @@ class VkUserAdmin(admin.ModelAdmin):
         'twitter',
     )
 
+    list_display = ('id', 'first_name', 'last_name', 'bdate',
+                    'university', 'faculty', 'graduation',
+                    'twitter')
+
 
 @admin.register(VkGroup)
 class VkGroupAdmin(admin.ModelAdmin):
