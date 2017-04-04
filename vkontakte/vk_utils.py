@@ -42,14 +42,15 @@ class API(VkAPI):
     def get_wall_posts(self, users: List['User'], count=100, from_time=-1) -> Iterable['Post']:
         answer = self.execute.wallWatch(
             id_list=[user.id for user in users],
-            count=count
+            count=count,
+            func_v=4
         )
 
         for row in extend_nested_list(answer):
-            post = VkPost(row)
+            post = VkPost(row=row)
             post.find_user()
             post.save()
-            return post
+            yield post
 
 
 class Request(VkRequest):

@@ -44,5 +44,7 @@ class VkPostAdmin(admin.ModelAdmin):
         'text',
         'reposts',
         'likes',
-        'source'
+        'source_data'
     )
+
+    list_display = ('id', 'owner_user', 'text', 'reposts', 'likes')

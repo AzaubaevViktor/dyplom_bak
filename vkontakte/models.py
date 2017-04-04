@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 import random
@@ -117,36 +119,40 @@ class VkGroup(models.Model):
 
 class VkPost(models.Model):
     row = JSONField()
-    _date = models.IntegerField()
-    date = models.DateField()
-    owner_user = models.ForeignKey(VkUser, on_delete=models.CASCADE)
-    owner_group = models.ForeignKey(VkGroup, on_delete=models.CASCADE)
+    _date = models.IntegerField(null=True)
+    date = models.DateField(null=True)
+    owner_user = models.ForeignKey(VkUser, on_delete=models.CASCADE, null=True)
+    owner_group = models.ForeignKey(VkGroup, on_delete=models.CASCADE, null=True)
     text = models.TextField()
     reposts = models.IntegerField()
     likes = models.IntegerField()
-    source = models.ForeignKey('VkPost')
+    source_data = JSONField()
 
-    def __init__(self, row, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.id = row['id']
-        self.row = row
+    def save(self, *args, **kwargs):
+        self.id = self.row['id']
         self._fill()
         self._find_source()
+        self.find_user()
+        super().save()
+
+    def _fill_date(self):
+        self.date = date.fromtimestamp(self._date)
 
     def find_user(self):
-        self.owner_user = VkUser.objects.get(self.row['owner_id'])
+        self.owner_user = VkUser.objects.get(id=self.row['owner_id'])
 
     def _fill(self):
         self._date = self.row['date']
+        self._fill_date()
         self.id = self.row['id']
         self.text = self.row['text']
         self.reposts = self.row['reposts']['count']
         self.likes = self.row['likes']['count']
 
     def _find_source(self):
-        return None
-        copy_history = self.row.get('copy_history', {})
-        self.source = {
+        # return None
+        copy_history = self.row.get('copy_history', [{}])[0]
+        self.source_data = {
             'owner_id': copy_history.get('owner_id'),
             'id': copy_history.get('id')
         }
