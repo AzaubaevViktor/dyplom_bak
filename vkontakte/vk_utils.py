@@ -15,6 +15,9 @@ class API(VkAPI):
     """
     Модуль-обвязка для vk.API
     """
+    user_fields = ['bdate', 'city', 'connections', 'education', 'exports', 'personal', 'relations', 'sex',
+                   'universities']
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -28,17 +31,18 @@ class API(VkAPI):
         :param ids:
         :return:
         """
-        users_data = self.users.get(
+        answer = self.users.get(
             user_ids=ids,
-            fields=['bdate', 'city', 'connections', 'education', 'exports', 'personal', 'relations', 'sex',
-                    'universities']
+            fields=self.user_fields
         )
-        for user_data in users_data:
-            user = VkUser(row=user_data)
+        users = []
+        for row in answer:
+            user = VkUser(row=row)
             if user.is_deactivated:
                 continue
             user.save()
-            yield user
+            users.append(user)
+        return users
 
     def get_wall_posts(self, users: List['User'], count=100, from_time=-1) -> Iterable['Post']:
         answer = self.execute.wallWatch(
@@ -47,20 +51,43 @@ class API(VkAPI):
             func_v=4
         )
 
+        posts = []
+
         for row in extend_nested_list(answer):
             post = VkPost(row=row)
             post.find_user()
             post.save()
-            yield post
+            posts.append(post)
+
+        return posts
 
     def get_groups(self, group_ids: List[int or str]):
         answer = self.groups.getById(
             group_ids=group_ids,
         )
+        groups = []
         for row in answer:
             group = VkGroup(row=row)
             group.save()
-            yield group
+            groups.append(group)
+        return groups
+
+    def get_group_users(self, group: VkGroup):
+        offset = 0
+        count = 1
+        while offset < count:
+            answer = self.groups.getMembers(
+                group_id=group.id,
+                offset=offset,
+                count=1000,
+                sort='id_desc'
+            )
+            count = answer['count']
+            offset += 1000
+            ids = answer['items']
+            users = self.get_users(ids)
+            group.users.add(*users)
+            yield from users
 
 
 class Request(VkRequest):
@@ -75,9 +102,12 @@ class Request(VkRequest):
         while True:
             try:
                 return super().__call__(*args, **kwargs)
-            except VkAPIError as e:
-                if 6 == e.code:
-                    self.log.info("Error: \n  %s", e.message)
-                    sleep(1)
-                else:
-                    raise e
+            except Exception as e:
+                sleep(5)
+                print("Sleep, error {}".format(e))
+            # except VkAPIError as e:
+            #     if 6 == e.code:
+            #         self.log.info("Error: \n  %s", e.message)
+            #         sleep(1)
+            #     else:
+            #         raise e

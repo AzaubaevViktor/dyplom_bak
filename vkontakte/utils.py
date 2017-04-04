@@ -55,8 +55,8 @@ def parse_date(s: str):
     try:
         dt = datetime.strptime(s, "%d.%m.%Y")
     except ValueError:
-        dt = datetime.strptime(s, "%d.%m")
-    return dt
+        s += ".1904"
+        dt = datetime.strptime(s, "%d.%m.%Y")
     return dt
 
 

@@ -5,6 +5,8 @@ from django.db import models
 import random
 
 # Create your models here.
+from django.utils.html import format_html
+
 from .utils import parse_date
 
 
@@ -113,6 +115,12 @@ class VkUser(models.Model):
     def is_deactivated(self):
         return bool(self.row.get('deactivated', False))
 
+    @property
+    def vk_link(self):
+        return format_html(
+            "<a href='https://vk.com/id{}'>vk</a>".format(self.id)
+        )
+
     def __str__(self):
         return "id{o.id}: {o.last_name} {o.first_name}".format(o=self)
 
@@ -135,6 +143,7 @@ class VkGroup(models.Model):
 
 
 class VkPost(models.Model):
+    post_id = models.IntegerField()
     row = JSONField()
     _date = models.IntegerField(null=True)
     date = models.DateField(null=True)
@@ -145,8 +154,19 @@ class VkPost(models.Model):
     likes = models.IntegerField()
     source_data = JSONField()
 
+    class Meta:
+        unique_together = (('id', 'owner_user'), )
+
+    @property
+    def vk_link(self):
+        return format_html(
+            "<a href='https://vk.com/wall{}_{}'>vk</a>".format(
+                self.owner_user.id,
+                self.post_id
+            )
+        )
+
     def save(self, *args, **kwargs):
-        self.id = self.row['id']
         self._fill()
         self._find_source()
         self.find_user()
@@ -161,7 +181,7 @@ class VkPost(models.Model):
     def _fill(self):
         self._date = self.row['date']
         self._fill_date()
-        self.id = self.row['id']
+        self.post_id = self.row['id']
         self.text = self.row['text']
         self.reposts = self.row['reposts']['count']
         self.likes = self.row['likes']['count']

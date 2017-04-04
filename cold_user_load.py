@@ -1,10 +1,20 @@
 import django
+
+
 django.setup()
 from vkontakte.models import *
-print("Run")
-connector = VkConnector.objects.get(id=1)
+from vkontakte.utils import print_line
 
-i = 0
-for u in connector.api.get_users(range(10000)):
-    i += 1
-    print(u, i)
+print("Run")
+api = VkConnector.default().api
+
+groups = VkGroup.objects.all()
+
+print(groups)
+
+count = 0
+for group in groups:
+    print(group.name)
+    for users in api.get_group_users(group):
+        count += 1
+        print_line('Load {} users'.format(count))

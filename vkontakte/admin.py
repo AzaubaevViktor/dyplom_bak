@@ -23,9 +23,10 @@ class VkUserAdmin(admin.ModelAdmin):
         'twitter',
     )
 
-    list_display = ('id', 'first_name', 'last_name', 'bdate',
+    list_display = ('id', 'vk_link', 'first_name', 'last_name', 'bdate',
                     'university', 'faculty', 'graduation',
                     'twitter')
+    list_filter = ('university', )
 
 
 @admin.register(VkGroup)
@@ -36,11 +37,10 @@ class VkGroupAdmin(admin.ModelAdmin):
     )
 
 
-
-
 @admin.register(VkPost)
 class VkPostAdmin(admin.ModelAdmin):
     fields = (
+        'post_id',
         'row',
         '_date',
         'date',
@@ -52,4 +52,4 @@ class VkPostAdmin(admin.ModelAdmin):
         'source_data'
     )
 
-    list_display = ('id', 'owner_user', 'text', 'reposts', 'likes')
+    list_display = ('id', 'vk_link', 'post_id', 'owner_user', 'text', 'reposts', 'likes')
