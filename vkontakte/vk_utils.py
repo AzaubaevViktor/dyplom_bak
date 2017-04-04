@@ -33,9 +33,11 @@ class API(VkAPI):
                     'universities']
         )
         for user_data in users_data:
-            user = VkUser(user_data)
+            user = VkUser(row=user_data)
+            if user.is_deactivated:
+                continue
             user.save()
-            return user
+            yield user
 
     def get_wall_posts(self, users: List['User'], count=100, from_time=-1) -> Iterable['Post']:
         answer = self.execute.wallWatch(

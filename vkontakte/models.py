@@ -74,21 +74,20 @@ class VkUser(models.Model):
     )
     row = JSONField()
     sex = models.SmallIntegerField(choices=SEX)
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    _bdate = models.CharField(max_length=20)
-    bdate = models.DateField()
+    first_name = models.CharField(max_length=100, default="")
+    last_name = models.CharField(max_length=100, default="")
+    _bdate = models.CharField(max_length=20, null=True)
+    bdate = models.DateField(null=True)
     university = models.IntegerField(default=0)
     graduation = models.IntegerField(default=0)
-    twitter = models.CharField(max_length=70)
+    twitter = models.CharField(max_length=70, null=True)
 
-    def __init__(self, row, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.id = row['id']
-        self.row = row
+    def save(self, *args, **kwargs):
         self._fill()
+        return super().save(*args, **kwargs)
 
     def _fill(self):
+        self.id = self.row['id']
         self.sex = int(self.row['sex'])
         self.first_name = self.row['first_name']
         self.last_name = self.row['last_name']
@@ -99,6 +98,13 @@ class VkUser(models.Model):
     @property
     def in_NSU(self):
         return 671 == self.university
+
+    @property
+    def is_deactivated(self):
+        return bool(self.row.get('deactivated', False))
+
+    def __str__(self):
+        return "id{o.id}: {o.last_name} {o.first_name}".format(o=self)
 
 
 class VkGroup(models.Model):

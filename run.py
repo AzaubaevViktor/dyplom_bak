@@ -4,4 +4,4 @@ from vkontakte.models import *
 print("Run")
 connector = VkConnector.objects.get(id=1)
 
-print(connector.api.get_users([0, 1, 2, 3]))
+print(list(connector.api.get_users([0, 1, 2, 3])))
