@@ -71,7 +71,7 @@ def posts_handle(posts):
             post_i += 1
         else:
             lmm = LemmaMeet(lemma=lemma,
-                            timestamp=post.timestamp,
+                            timestamp=posts[post_i].timestamp,
                             post=posts[post_i])
             lmm.save()
             _lemmas_count += 1
