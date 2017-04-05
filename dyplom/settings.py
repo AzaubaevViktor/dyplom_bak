@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'vkontakte'
+    'django_extensions',
+    'vkontakte',
+    'lemmatize'
 ]
 
 MIDDLEWARE = [

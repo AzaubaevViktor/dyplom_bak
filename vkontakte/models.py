@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
@@ -145,8 +145,7 @@ class VkGroup(models.Model):
 class VkPost(models.Model):
     post_id = models.IntegerField()
     row = JSONField()
-    _date = models.IntegerField(null=True)
-    date = models.DateField(null=True)
+    timestamp = models.IntegerField(null=True)
     owner_user = models.ForeignKey(VkUser, on_delete=models.CASCADE, null=True)
     owner_group = models.ForeignKey(VkGroup, on_delete=models.CASCADE, null=True)
     text = models.TextField()
@@ -166,21 +165,21 @@ class VkPost(models.Model):
             )
         )
 
+    @property
+    def date(self):
+        return datetime.fromtimestamp(self.timestamp)
+
     def save(self, *args, **kwargs):
         self._fill()
         self._find_source()
         self.find_user()
         super().save()
 
-    def _fill_date(self):
-        self.date = date.fromtimestamp(self._date)
-
     def find_user(self):
         self.owner_user = VkUser.objects.get(id=self.row['owner_id'])
 
     def _fill(self):
-        self._date = self.row['date']
-        self._fill_date()
+        self.timestamp = self.row['date']
         self.post_id = self.row['id']
         self.text = self.row['text']
         self.reposts = self.row['reposts']['count']

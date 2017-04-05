@@ -26,7 +26,7 @@ class VkUserAdmin(admin.ModelAdmin):
     list_display = ('id', 'vk_link', 'first_name', 'last_name', 'bdate',
                     'university', 'faculty', 'graduation',
                     'twitter')
-    list_filter = ('university', )
+    search_fields = ('university', 'last_name', 'first_name')
 
 
 @admin.register(VkGroup)
