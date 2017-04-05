@@ -54,10 +54,11 @@ class API(VkAPI):
         posts = []
 
         for row in extend_nested_list(answer):
-            post = VkPost(row=row)
-            post.find_user()
-            post.save()
-            posts.append(post)
+            if row is not None:
+                post = VkPost(row=row)
+                post.find_user()
+                post.save()
+                posts.append(post)
 
         return posts
 
