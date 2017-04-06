@@ -15,3 +15,5 @@ class LemmaAdmin(admin.ModelAdmin):
 class LemmaMeetAdmin(admin.ModelAdmin):
     fields = ('lemma', 'timestamp', 'post')
     list_display = ('lemma', 'timestamp', 'post_text')
+
+    search_fields = ('timestamp', )
