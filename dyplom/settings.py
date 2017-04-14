@@ -80,11 +80,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'dyplom',
-        'USER': 'vkorovin',
-        'PASSWORD': "12345",
+        'HOST': "/var/run/postgresql/",
+        "USER": "postgres"
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.10/ref/settings/#auth-password-validators
