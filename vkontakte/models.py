@@ -85,12 +85,14 @@ class VkUser(models.Model):
     sex = models.SmallIntegerField(choices=SEX)
     first_name = models.CharField(max_length=100, default="")
     last_name = models.CharField(max_length=100, default="")
-    _bdate = models.CharField(max_length=20, null=True)
-    bdate = models.DateField(null=True)
-    university = models.IntegerField(default=0)
-    graduation = models.IntegerField(default=0)
-    faculty = models.IntegerField(default=0)
-    twitter = models.CharField(max_length=70, null=True)
+
+    year = models.IntegerField(default=-1)
+    month = models.IntegerField(default=-1)
+    day = models.IntegerField(default=-1)
+
+    university = models.IntegerField(default=0)  # университет
+    graduation = models.IntegerField(default=0)  # год выпуска
+    faculty = models.IntegerField(default=0)  # факультет
 
     def save(self, *args, **kwargs):
         self._fill()
@@ -101,11 +103,17 @@ class VkUser(models.Model):
         self.sex = int(self.row['sex'])
         self.first_name = self.row['first_name']
         self.last_name = self.row['last_name']
-        self._bdate = self.row.get('bdate')
-        self.bdate = parse_date(self._bdate)
+        self._fill_bdate(self.row.get('bdate'))
         self.university = int(self.row.get('university', 0))
         self.graduation = int(self.row.get('graduation', 0))
         self.faculty = int(self.row.get('faculty', 0))
+
+    def _fill_bdate(self, bdate):
+        items = bdate.split(".")
+        if len(items) == 2:
+            self.day, self.month = items
+        elif len(items) == 3:
+            self.day, self.month, self.year = items
 
     @property
     def in_NSU(self):
