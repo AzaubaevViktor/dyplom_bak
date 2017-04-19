@@ -1,20 +1,28 @@
 import django
-
-
 django.setup()
-from vkontakte.models import *
-from vkontakte.utils import print_line
 
-print("Run")
+from progressbar import Progress
+
+import better_exceptions
+better_exceptions.MAX_LENGTH = None
+from better_exceptions import color
+
+from vkontakte.models import *
+
+print("Cold User Load")
 api = VkConnector.default().api
+print("VkApi ok")
 
 groups = VkGroup.objects.all()
 
-print(groups)
+print("Groups: {}".format(groups))
 
-count = 0
+
 for group in groups:
-    print(group.name)
-    for users in api.get_group_users(group):
-        count += 1
-        print_line('Load {} users'.format(count))
+    print("Load from {}".format(group.name))
+
+    progress = Progress(max_value=1, item_name="u")
+    for user, count in api.get_group_users(group):
+        progress.update_max(count)
+        progress.update()
+

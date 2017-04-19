@@ -25,6 +25,9 @@ class Progress:
         self.speed = 0
         self.item_name = item_name
 
+    def update_max(self, max_value: int):
+        self.max_value = max_value
+
     def update(self, increment=1):
         self.current_value += 1
         if self.start_time is None:

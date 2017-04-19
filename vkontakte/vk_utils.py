@@ -3,6 +3,7 @@ from time import sleep
 
 from typing import List, Iterable
 
+from django.db import transaction
 from vk import API as VkAPI
 from vk.api import Request as VkRequest
 from vk.exceptions import VkAPIError
@@ -36,12 +37,13 @@ class API(VkAPI):
             fields=self.user_fields
         )
         users = []
-        for row in answer:
-            user = VkUser(row=row)
-            if user.is_deactivated:
-                continue
-            user.save()
-            users.append(user)
+        with transaction.atomic():
+            for row in answer:
+                user = VkUser(row=row)
+                if user.is_deactivated:
+                    continue
+                user.save()
+                users.append(user)
         return users
 
     def get_wall_posts(self, users: List['User'], count=100, from_time=-1) -> Iterable['Post']:
@@ -88,7 +90,7 @@ class API(VkAPI):
             ids = answer['items']
             users = self.get_users(ids)
             group.users.add(*users)
-            yield from users
+            yield from [(user, count) for user in users]
 
 
 class Request(VkRequest):

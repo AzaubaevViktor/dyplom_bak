@@ -86,9 +86,9 @@ class VkUser(models.Model):
     first_name = models.CharField(max_length=100, default="")
     last_name = models.CharField(max_length=100, default="")
 
-    year = models.IntegerField(default=-1)
-    month = models.IntegerField(default=-1)
-    day = models.IntegerField(default=-1)
+    year = models.IntegerField(default=None, null=True)
+    month = models.IntegerField(default=None, null=True)
+    day = models.IntegerField(default=None, null=True)
 
     university = models.IntegerField(default=0)  # университет
     graduation = models.IntegerField(default=0)  # год выпуска
@@ -109,11 +109,21 @@ class VkUser(models.Model):
         self.faculty = int(self.row.get('faculty', 0))
 
     def _fill_bdate(self, bdate):
+        if bdate is None:
+            return
         items = bdate.split(".")
         if len(items) == 2:
             self.day, self.month = items
         elif len(items) == 3:
             self.day, self.month, self.year = items
+
+    @property
+    def date_str(self):
+        return "{}.{}.{}".format(
+            self.day or "?",
+            self.month or "?",
+            self.year or "?"
+        )
 
     @property
     def in_NSU(self):

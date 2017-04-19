@@ -16,14 +16,15 @@ class VkUserAdmin(admin.ModelAdmin):
         'sex',
         'first_name',
         'last_name',
-        'bdate',
+        'day',
+        'month',
+        'year'
         'university',
         'graduation',
-        'twitter',
     )
 
     list_display = ('id', 'vk_link', 'first_name', 'last_name',
-                    'university', 'faculty', 'graduation',)
+                    'university', 'faculty', 'date_str', 'graduation',)
     search_fields = ('university', 'last_name', 'first_name')
 
 

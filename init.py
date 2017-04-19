@@ -8,4 +8,4 @@ api = VkConnector.default().api
 
 groups = api.get_groups(['typical_nsu', 'nsu24'])
 for group in groups:
-    pprint(group)
+    pprint("Added group {}".format(group))
