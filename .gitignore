@@ -152,3 +152,4 @@ ENV/
 .vk_token
 db.sqlite3
 .idea
+db/
