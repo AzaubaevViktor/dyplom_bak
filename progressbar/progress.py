@@ -14,7 +14,7 @@ def print_line(s):
 class Progress:
     phases = (' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█')
 
-    def __init__(self, max_value, item_name="i", significant = 10):
+    def __init__(self, max_value, item_name="i", significant=10):
         self.widht, _ = shutil.get_terminal_size()
         self.widht -= 1
         self.current_value = 0
