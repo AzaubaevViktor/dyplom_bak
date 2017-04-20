@@ -22,6 +22,7 @@ i = 0
 students = VkUser.objects.filter(Q(my_nsu_user__isnull=False) | Q(university=671))
 print("Found {} stundents".format(len(students)))
 
+p_all_before = VkPost.objects.count()
 p_count = 0
 
 progress = Progress(max_value=students.count())
@@ -34,3 +35,7 @@ for student in students:
             p_count += 1
 
     progress.update()
+    progress.user_str = "+{} posts, {} all".format(
+        p_count,
+        p_all_before + p_count
+    )

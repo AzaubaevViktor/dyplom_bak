@@ -24,6 +24,7 @@ class Progress:
         self.significant = significant
         self.speed = 0
         self.item_name = item_name
+        self.user_str = ""
 
     def update_max(self, max_value: int):
         self.max_value = max_value
@@ -47,7 +48,10 @@ class Progress:
         print_line(self._write(cur_time))
 
     def _write(self, cur_time):
-        before = self._percent() + "["
+        before = "{} {} [".format(
+            self._percent(),
+            self.user_str
+        )
         after = "] {} {} {}".format(
             self._speed(),
             self._elapsed(cur_time),
