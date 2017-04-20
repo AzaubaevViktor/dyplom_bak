@@ -126,6 +126,12 @@ class VkUser(models.Model):
         )
 
     @property
+    def bdate(self):
+        if self.day and self.month and self.year:
+            return date(year=self.year, month=self.month, day=self.day)
+        return None
+
+    @property
     def in_NSU(self):
         return 671 == self.university
 

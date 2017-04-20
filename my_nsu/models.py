@@ -16,7 +16,7 @@ class MyNsuUserManager(models.Manager):
         if raw_data is None:
             return None
         info = self._parser_person_info(raw_data)
-        first, last, patron = self._parse_name(info['name'])
+        last, first, patron = self._parse_name(info['name'])
 
         if len(info['learn']) == 0:
             info['learn'] = [{}]
@@ -138,6 +138,12 @@ class MyNsuUser(models.Model):
     leave = models.BooleanField(default=False)
     foreign = models.BooleanField(default=False)
     qualification = models.CharField(max_length=80, null=True)
+
+    vk_user = models.ForeignKey('vkontakte.VkUser',
+                                models.SET_NULL,
+                                related_name='my_nsu_user',
+                                blank=True,
+                                null=True)
 
     objects = MyNsuUserManager()
 

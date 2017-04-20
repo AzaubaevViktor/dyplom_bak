@@ -11,5 +11,6 @@ class MyNsuUserAdmin(admin.ModelAdmin):
                     'group',
                     'faculty',
                     'user_type',
-                    'qualification')
+                    'qualification',
+                    'vk_user')
     search_fields = ('first_name', 'last_name')
