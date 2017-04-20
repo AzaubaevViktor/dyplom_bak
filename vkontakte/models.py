@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from time import mktime
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
@@ -29,7 +30,7 @@ class VkConnector(models.Model):
         return self._token
 
     @property
-    def api(self) -> 'API':
+    def api(self) -> 'VkAPI':
         if not hasattr(self, '_api'):
             import vk
             from .vk_utils import API
@@ -94,6 +95,8 @@ class VkUser(models.Model):
     graduation = models.IntegerField(default=0)  # год выпуска
     faculty = models.IntegerField(default=0)  # факультет
 
+    _start_graduate = None
+
     def save(self, *args, **kwargs):
         self._fill()
         return super().save(*args, **kwargs)
@@ -116,6 +119,23 @@ class VkUser(models.Model):
             self.day, self.month = items
         elif len(items) == 3:
             self.day, self.month, self.year = items
+
+    @classmethod
+    def get_start_graduate(cls) -> int:
+        if not cls._start_graduate:
+            d = date(
+                year=date.today().year - 5,
+                month=9,
+                day=1)
+            cls._start_graduate = mktime(d.timetuple())
+        return cls._start_graduate
+
+    @property
+    def last_post_time(self) -> int:
+        if self.posts.count() == 0:
+            return self.get_start_graduate()
+        else:
+            return self.posts.order_by('-timestamp').first().timestamp
 
     @property
     def date_str(self):
@@ -170,7 +190,7 @@ class VkPost(models.Model):
     post_id = models.IntegerField()
     row = JSONField()
     timestamp = models.IntegerField(null=True)
-    owner_user = models.ForeignKey(VkUser, on_delete=models.CASCADE, null=True)
+    owner_user = models.ForeignKey(VkUser, related_name='posts', on_delete=models.CASCADE, null=True)
     owner_group = models.ForeignKey(VkGroup, on_delete=models.CASCADE, null=True)
     text = models.TextField()
     reposts = models.IntegerField()

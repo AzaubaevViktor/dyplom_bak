@@ -41,8 +41,7 @@ class VkPostAdmin(admin.ModelAdmin):
     fields = (
         'post_id',
         'row',
-        '_date',
-        'date',
+        'timestamp',
         'owner_user',
         'owner_group',
         'text',

@@ -1,4 +1,6 @@
+import datetime
 from pprint import pprint
+from time import mktime
 from time import sleep
 
 from typing import List, Iterable
@@ -46,23 +48,21 @@ class API(VkAPI):
                 users.append(user)
         return users
 
-    def get_wall_posts(self, users: List['User'], count=100, from_time=-1) -> Iterable['Post']:
+    def get_wall_posts(self, user: 'VkUser', from_time=None) -> Iterable['Post']:
         answer = self.execute.wallWatch(
-            id_list=[user.id for user in users],
-            count=count,
-            func_v=4
+            id=user.id,
+            from_time=from_time,
+            func_v=5
         )
 
         posts = []
 
         for row in extend_nested_list(answer):
-            if row is not None:
+            if row is not None and row['date'] > from_time:
                 post = VkPost(row=row)
-                post.find_user()
+                post.owner_user = user
                 post.save()
-                posts.append(post)
-
-        return posts
+                yield post
 
     def get_groups(self, group_ids: List[int or str]):
         answer = self.groups.getById(
