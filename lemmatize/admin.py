@@ -14,6 +14,6 @@ class LemmaAdmin(admin.ModelAdmin):
 @admin.register(LemmaMeet)
 class LemmaMeetAdmin(admin.ModelAdmin):
     fields = ('lemma', 'timestamp', 'post')
-    list_display = ('lemma', 'timestamp', 'post_text')
+    list_display = ('lemma', 'timestamp', 'post_id', 'post_text')
 
     search_fields = ('timestamp', )
