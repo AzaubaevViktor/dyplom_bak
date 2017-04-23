@@ -7,31 +7,17 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 # Create your views here.
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
-from .models import Lemma, LemmaMeet
-
-
-def max_list(request):
-    count = request.GET.get('count', 100)
-    lemmas = Lemma.objects.annotate(_meets_count=Count('meets')).filter(_meets_count__gte=count).all()
-
-    i = 0
-
-    data = []
-
-    for lemma in lemmas:
-        data.append((lemma.name, lemma.meets_count))
-
-    data.sort(key=lambda x: x[1])
-
-    return HttpResponse(str(data))
+from lemmatize.models import Lemma, LemmaMeet
 
 
-
+@api_view(["GET"])
 def sliding(request):
     lemma = Lemma.objects.get(name=request.GET.get('word', 'сессия'))
     meets = LemmaMeet.objects.filter(lemma=lemma).order_by("timestamp")
-    data = "["
+    data = []
 
     width = int(request.GET.get('width', 60 * 60))
 
@@ -45,7 +31,7 @@ def sliding(request):
         else:
             break
 
-    data += "[{}, {}], ".format(left_ts + width / 2, right - left)
+    data.append((left_ts + width / 2, right - left))
 
     while right + 1 < len(meets):
         if meets[right + 1].timestamp - (left_ts + width) < meets[left + 1].timestamp - left_ts:
@@ -55,17 +41,16 @@ def sliding(request):
             left += 1
             left_ts = meets[left].timestamp
 
-        data += "[{}, {}], ".format(left_ts + width / 2, right - left)
+        data.append((left_ts + width / 2, right - left))
 
-    data += "]"
-
-    return render(request, 'graph.html', {'data': data, 'lemma': lemma})
+    return Response(data)
 
 
+@api_view(['GET'])
 def diff2(request):
-    lemma = Lemma.objects.get(name='посвяга')
+    lemma = Lemma.objects.get(name=request.GET.get('word', 'сессия'))
     meets = LemmaMeet.objects.filter(lemma=lemma).order_by("timestamp")
-    data = "["
+    data = []
 
     meet_i = iter(meets)
     next(meet_i)
@@ -76,24 +61,23 @@ def diff2(request):
     try:
         while True:
             if meet.timestamp != prev_meet.timestamp:
-                data += "[{}, {}], ".format(
+                data.append((
                     meet.timestamp,
                     1 / math.log(meet.timestamp - prev_meet.timestamp)
-                )
+                ))
             meet = next(meet_i)
             prev_meet = next(prev_meet_i)
     except StopIteration:
-        data += "]"
+        pass
 
-    return render(request, 'graph.html', {'data': data, 'lemma': lemma})
-
-
+    return Response(data)
 
 
+@api_view(['GET'])
 def diff(request):
-    lemma = Lemma.objects.get(name='хуй')
+    lemma = Lemma.objects.get(name=request.GET.get('word', 'сессия'))
     meets = LemmaMeet.objects.filter(lemma=lemma).order_by("timestamp")
-    data = "["
+    data = []
 
     count = 0
     cur_date = datetime.datetime.fromtimestamp(meets[0].timestamp).date()
@@ -101,24 +85,23 @@ def diff(request):
     for meet in meets:
         date = datetime.datetime.fromtimestamp(meet.timestamp)
         if date.date() != cur_date:
-            data += "[{}, {}], ".format(
+            data.append((
                 meet.timestamp,
                 count
-            )
+            ))
             count = 1
             cur_date = date.date()
         else:
             count += 1
 
-    data += "]"
-    return render(request, 'graph.html', {'data': data, 'lemma': lemma})
+    return Response(data)
 
 
-
-def graph(request):
+@api_view(['GET'])
+def source(request):
     lemma = Lemma.objects.get(name=request.GET.get('word', 'сессия'))
     meets = LemmaMeet.objects.filter(lemma=lemma).order_by("timestamp")
-    data = "["
+    data = []
     count = 0
 
     meet_i = iter(meets)
@@ -131,16 +114,11 @@ def graph(request):
         while True:
             count += 1
             # if meet.timestamp != prev_meet.timestamp:
-            data += "[{},{}],".format(meet.timestamp,
-                                      count,
-                                      # 1/(meet.timestamp - prev_meet.timestamp)
-                                      )
+            data.append((meet.timestamp, count))
 
             meet = next(meet_i)
             prev_meet = next(prev_meet_i)
     except StopIteration:
         pass
 
-    data += "]"
-    return render(request, 'graph.html', {'data': data, 'lemma': lemma})
-
+    return Response(data)
