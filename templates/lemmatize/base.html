@@ -12,7 +12,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-8">
-            <svg width="1000" height="600"></svg>
+            <svg></svg>
         </div>
         <div class="col-4">
             <form class="form">
@@ -36,9 +36,13 @@
                     <label for="graphType">Graph Type:</label>
                     <select class="form-control" id="graphType">
                         <option value="sliding">sliding</option>
+                        <option value="sliding_diff">sliding_diff</option>
+                        <option value="sliding_diff_log">sliding_diff_log</option>
                         <option value="diff">diff</option>
                         <option value="diff2">diff2</option>
                         <option value="source">source</option>
+                        <option value="source_diff">source_diff</option>
+
                     </select>
                 </div>
                 <div class="form-group">
@@ -46,6 +50,7 @@
                     <input class="form-control" type="number" value="3600" id="width">
                 </div>
                 <a href="#" id="draw_button" type="submit" class="btn btn-primary">Submit</a>
+                <span id="helper"> <= Select and click here!</span>
             </form>
 
         </div>

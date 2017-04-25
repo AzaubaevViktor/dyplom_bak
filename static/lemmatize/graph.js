@@ -66,22 +66,31 @@ class LemmaFinder {
 }
 
 
+class Drawer {
+    constructor() {
+        this.clear();
+
+
+    }
+
+    clear() {
+        d3.select("svg").selectAll("*").remove();
+    }
+}
+
+
 function draw(data, lemma_name) {
     d3.select("svg").selectAll("*").remove();
 
-    let svg = d3.select("svg"),
-        margin = {top: 20, right: 20, bottom: 30, left: 50},
-        width = +svg.attr("width") - margin.left - margin.right,
-        height = +svg.attr("height") - margin.top - margin.bottom,
-        g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    let svg = d3.select("svg");
+    let margin = {top: 20, right: 20, bottom: 30, left: 50};
+    let width = +svg.attr("width") - margin.left - margin.right;
+    let height = +svg.attr("height") - margin.top - margin.bottom;
+    let g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    let parseTime = d3.timeParse("%d-%b-%y");
+    let x = d3.scaleTime().rangeRound([0, width]);
 
-    let x = d3.scaleTime()
-        .rangeRound([0, width]);
-
-    let y = d3.scaleLinear()
-        .rangeRound([height, 0]);
+    let y = d3.scaleLinear().rangeRound([height, 0]);
 
     let line = d3.line()
         .x(function(d) { return x(new Date(d[0] * 1000)); })
@@ -100,13 +109,13 @@ function draw(data, lemma_name) {
     // gridlines in x axis function
     function make_x_gridlines() {
         return d3.axisBottom(x)
-            .ticks(5)
+            .ticks(12)
     }
 
 // gridlines in y axis function
     function make_y_gridlines() {
         return d3.axisLeft(y)
-            .ticks(5)
+            .ticks(12)
     }
 
 // add the X gridlines
@@ -149,6 +158,14 @@ function draw(data, lemma_name) {
 }
 
 $(document).ready(() => {
+    let svg = $("svg");
+    function resizeSvg() {
+        svg.attr("width", svg.parent().width());
+        svg.attr("height", $(window).height());
+    }
+    resizeSvg();
+    $(window).resize(resizeSvg);
+
     let lemma_finder = new LemmaFinder();
 
     let draw_button = $("#draw_button");
@@ -164,9 +181,15 @@ $(document).ready(() => {
                 word: lemma,
                 width: width
             },
+            beforeSend: () => {
+                $("#helper").text("Processing...");
+            },
             success: (data) => {
-                console.log(data);
+                $("#helper").text("Ok!");
                 draw(data, lemma);
+            },
+            error: (err, status) => {
+                $("#helper").text(`Error: ${status}!`);
             }
         });
 

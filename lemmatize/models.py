@@ -16,9 +16,15 @@ class Lemma(models.Model):
 
 
 class LemmaMeet(models.Model):
-    lemma = models.ForeignKey(Lemma, on_delete=models.CASCADE, related_name='meets')
+    lemma = models.ForeignKey(
+        Lemma,
+        on_delete=models.CASCADE,
+        related_name='meets')
     timestamp = models.IntegerField()
-    post = models.ForeignKey(VkPost, on_delete=models.CASCADE, related_name='lemma_meets')
+    post = models.ForeignKey(
+        VkPost,
+        on_delete=models.CASCADE,
+        related_name='lemma_meets')
 
     @property
     def post_text(self):
