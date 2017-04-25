@@ -1,5 +1,4 @@
 from django.conf.urls import url, include
-from rest_framework import routers
 
 from . import views
 
@@ -16,7 +15,6 @@ api_data_source = [
     url(r'sliding$', views.Sliding.as_view()),
     url(r'sliding_diff$', views.SlidingDiff.as_view()),
     url(r'sliding_diff_log$', views.SlidingDiffLog.as_view()),
-
 ]
 
 
