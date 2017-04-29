@@ -157,7 +157,7 @@ function draw(data, lemma_name) {
         .attr("d", line);
 }
 
-$(document).ready(() => {
+function drawInit() {
     let svg = $("svg");
     function resizeSvg() {
         svg.attr("width", svg.parent().width());
@@ -194,5 +194,10 @@ $(document).ready(() => {
         });
 
         return false;
-    })
+    });
+}
+
+
+$(document).ready(() => {
+    drawInit();
 });
