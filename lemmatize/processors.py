@@ -61,6 +61,35 @@ def sliding(timestamps: List[int], width=3600, **kwargs) -> List[Tuple[int, int]
     return data
 
 
+def _approx(p: Tuple[int, float], n: Tuple[int, float], c: int) -> Tuple[int, float]:
+    return c, p[1] + (n[1] - p[1]) / (n[0] - p[0]) * (c - p[0])
+
+
+def fixed(timestamps: List[Tuple[int, float]], dx=3600, **kwargs) -> List[Tuple[int, int]]:
+    data = []
+
+    prev_i = iter(timestamps)
+    cur_i = iter(timestamps)
+    cts, cv = next(cur_i)  # start
+
+    try:
+        while True:
+            pts, pv = next(prev_i)
+            nts, nv = next(cur_i)
+            while cts < nts:
+
+                data.append(
+                    _approx((pts, pv), (nts, nv), cts)
+                )
+                cts += dx
+
+    except StopIteration:
+        pass
+
+    return data
+
+
+
 def diff(ts_val: List[Tuple[int, int]], **kwargs) -> List[Tuple[int, float]]:
     data = []
 
@@ -120,3 +149,37 @@ def limit(ts_val: List[Tuple[int, int]], **kwargs) -> List[Tuple[int, float]]:
 
     return data
 
+
+def exp_smooth(ts_val: List[Tuple[int, int]], **kwargs) -> List[Tuple[int, float]]:
+    data = []
+
+    alpha = kwargs.get('alpha', 0.7)
+
+    cur_ts, val_es = ts_val[0]
+
+    for ts, val in ts_val:
+        val_es = alpha * val + (1 - alpha) * val_es
+
+        data.append((ts, val_es))
+
+    return data
+
+
+def weigth_avg(ts_val: List[Tuple[int, int]], **kwargs) -> List[Tuple[int, float]]:
+    data = []
+
+    alpha = kwargs.get('alpha', 0.3)
+    last = 60 * 60 * 24
+
+    cur_ts, val_es = ts_val[0]
+
+    for ts, val in ts_val:
+        if ts != cur_ts:
+            b = min(alpha * last / (ts - cur_ts), 1)  # неправильно
+
+            val_es = b * val + (1 - b) * val_es
+            cur_ts = ts
+
+            data.append((ts, val_es))
+
+    return data

@@ -51,11 +51,11 @@ class Sliding(BaseDataView):
         'width': (int, "3600")
     }
 
-    processors_list = [processors.sliding]
+    processors_list = [processors.exp_smooth, processors.fixed, processors.sliding]
 
 
 class SlidingDiff(Sliding):
-    processors_list = [processors.diff_ranged, processors.sliding]
+    processors_list = [processors.diff_ranged, processors.weigth_avg, processors.sliding]
 
 
 class SlidingDiffLog(Sliding):
@@ -136,4 +136,4 @@ class SourceDiff(BaseDataView):
     fields = {
         'width': (int, 3600)
     }
-    processors_list = [processors.diff_ranged, processors.accumulation]
+    processors_list = [processors.exp_smooth, processors.diff_ranged, processors.fixed, processors.accumulation]
