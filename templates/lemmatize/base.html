@@ -15,44 +15,25 @@
             <svg></svg>
         </div>
 
-        <div id="processors" class="col-4">
-            <form class="form" hidden="hidden">
-                <div class="form-group">
-                    <label for="lemma_name">Name</label>
-                    <input type="text" class="form-control" id="lemma_name" placeholder="Enter Lemma Name" value="сессия">
-                    <ul id="lemma_find" class="list-group" hidden="hidden">
-                        <li id="lemma0" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma1" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma2" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma3" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma4" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma5" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma6" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma7" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma8" class="list-group-item justify-content-between" hidden="hidden"></li>
-                        <li id="lemma9" class="list-group-item justify-content-between" hidden="hidden"></li>
-                    </ul>
+        <div class="col-4">
+            <div class="row">
+                <div class="col-12">
+                    <div id="add-proc-btn"  class="btn-group btn-block">
+                        <button type="button" class="btn btn-success dropdown-toggle btn-block" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Добавить
+                        </button>
+                        <div class="dropdown-menu">
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="graphType">Graph Type:</label>
-                    <select class="form-control" id="graphType">
-                        <option value="sliding">sliding</option>
-                        <option value="sliding_diff">sliding_diff</option>
-                        <option value="sliding_diff_log">sliding_diff_log</option>
-                        <option value="diff">diff</option>
-                        <option value="diff2">diff2</option>
-                        <option value="source">source</option>
-                        <option value="source_diff">source_diff</option>
+            </div>
+            <div class="row">
+                <div id="processors" class="col-12">
 
-                    </select>
                 </div>
-                <div class="form-group">
-                    <label for="width" class="col-form-label">Ширина окна (секунд)</label>
-                    <input class="form-control" type="number" value="3600" id="width">
-                </div>
-                <a href="#" id="draw_button" type="submit" class="btn btn-primary">Submit</a>
-                <span id="helper"> <= Select and click here!</span>
-            </form>
+            </div>
+
+
 
 
         </div>
@@ -61,8 +42,11 @@
 </div>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+
 <script src="{% static "lemmatize/graph.js" %}"></script>
 <script src="{% static "lemmatize/card.js" %}"></script>
 </body>

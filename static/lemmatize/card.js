@@ -6,10 +6,13 @@ class ProcessorsDashBoard {
     init() {
         return new Promise((resolve, reject) => {
             this.div = $("#processors");
+            this.firstButton = $("#add-proc-btn");
+            this.div.sortable({
+                        cancel: '.list-group',
+                        handle: '.card-block',
+                    });
             this._getProcessors().then(
                 () => {
-                    this.firstButton = this.getAddBtn(0);
-                    this.div.append(this.firstButton);
                     this._updateDropDowns();
                     resolve();
                 },
@@ -42,43 +45,33 @@ class ProcessorsDashBoard {
         });
     }
 
-    getAddBtn(position) {
-        return $(`<div class="btn-group btn-block add-btn" data-position="${position}">
-                <button type="button" class="btn btn-success dropdown-toggle btn-block" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    Добавить
-                </button>
-                <div class="dropdown-menu">
-                </div>
-            </div>`)
-    }
-
     _updateDropDowns() {
         let _this = this;
-        $(".add-btn > .dropdown-menu").each(function (data){
+        this.firstButton.find(".dropdown-menu").each(function (data){
             let el = $(this);
             console.log(el);
             let position = el.parent().data('position');
-            el.html("").append(_this.dropdownGenerate(position))
+            el.html("").append(_this._dropdownGenerate(position))
         });
         $('.dropdown-toggle').dropdown();
 
         $(".add-processor").on('click', function () {
             let el = $(this);
-            _this.addProcessor(el.data('position'), el.data('processor'));
-            console.log(`Pressed Proc:${el.data('processor')}, position:${el.data('position') }`);
+            _this.addProcessor(el.data('processor'));
+            console.log(`Pressed Proc:${el.data('processor')}`);
         });
     }
 
-    addProcessor(position, processorName) {
+    addProcessor(processorName) {
         let processor = this.processors[processorName];
-        if (0 == position) {
-            this.firstButton.after(processor.render());
-        }
+
+        this.div.prepend(processor.render());
+
     }
 
-    dropdownGenerate(position) {
+    _dropdownGenerate(position) {
         function getA(processor, content) {
-            return `<a class="dropdown-item add-processor" href="#" data-processor="${processor}" data-position="${position}">${content}</a>`
+            return `<a class="dropdown-item add-processor" href="#" data-processor="${processor}">${content}</a>`
         }
 
         let items = "";
@@ -101,44 +94,51 @@ class ProcessorCard {
         this.args = args;
     }
 
-    renderArg(arg) {
+    static _renderArg(arg) {
         return $(`
-<li class="list-group-item">
+        <li class="list-group-item">
             <div class="form-group">
                 <label for="input${arg.name}">${arg.desc}</label>
                 <input type="${arg.type}" class="form-control" id="input${arg.name}" placeholder="${arg.default || ''}">
             </div>
-</li>`)
+        </li>`)
     }
 
-    renderArgs() {
+    _renderArgs() {
         let form = $("<form></form>");
 
         for (let arg of this.args) {
-            form.append(this.renderArg(arg));
+            form.append(ProcessorCard._renderArg(arg));
         }
 
         return form;
     }
 
     render(position) {
-        let card = $(`<div class="card" data-position="${position}  ">
+        let card = $(`
+            <div class="card" data-position="${position}  ">
                 <div class="card-block">
                     <h4 class="card-title">${this.name}</h4>
                     <p class="card-text">${this.desc}</p>
                 </div>
                 <ul class="list-group list-group-flush">
-                    
                     <!-- Rendered Args -->
-                
                 </ul>
                 <div class="card-block">
-                    <a href="#" class="card-link text-success">Add after</a>
-                    <a href="#" class="card-link text-primary">Calculate</a>
-                    <a href="#" class="card-link text-danger">Delete</a>
+                    <a href="#" class="card-link text-primary" data-action="calc">Calculate</a>
+                    <a href="#" class="card-link text-danger" data-action="delete">Delete</a>
                 </div>
             </div>`);
-        card.find(".list-group").append(this.renderArgs());
+        card.find(".list-group").append(this._renderArgs());
+        card.find("a").on('click', function () {
+            let $this = $(this);
+            console.log($this);
+            if ('delete' == $this.data('action')) {
+                $this.closest(".card").remove();
+                return false;
+            }
+        });
+
         return card;
     }
 }
