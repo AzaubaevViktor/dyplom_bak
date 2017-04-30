@@ -16,9 +16,10 @@ class ProcessorsView(APIView):
             _id = processor.__name__
             args = [{
                 'name': name,
-                'word': word,
+                'desc': desc,
                 'type': _type.__name__
-            } for name, word, _type in processor.args]
+            } for name, desc, _type in processor.args]
+
             data[_id] = {
                 'name': processor.name,
                 'desc': processor.desc,
