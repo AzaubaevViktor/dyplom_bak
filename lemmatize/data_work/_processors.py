@@ -6,12 +6,12 @@ from lemmatize.models import Lemma, LemmaMeet
 from ._types import DataEntry, Argument
 
 
-processors = []  # type: List[Type[DataProcessor]]
+processors = {}  # type: List[Type[DataProcessor]]
 
 
-def register(cl):
-    processors.append(cl)
-    return cl
+def register(Class):
+    processors[Class.__name__] = Class
+    return Class
 
 
 class DataProcessorError(Exception):
@@ -33,10 +33,11 @@ class DataProcessor(metaclass=abc.ABCMeta):
 
     def __init__(self, source: 'DataProcessor', *args, **kwargs):
         self.source = source
-        self._parse_args(args)
+        self._parse_args(**kwargs)
 
-    def _parse_args(self, input_args):
-        for name, desc, _type, value in zip(self.args, input_args):
+    def _parse_args(self, **kwargs):
+        for name, desc, _type in self.args:
+            value = kwargs[name]
             assert isinstance(value, _type)
             setattr(self, name, value)
 

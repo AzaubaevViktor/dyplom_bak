@@ -1,5 +1,6 @@
 import abc
 # Create your views here.
+import json
 from typing import List, Tuple
 
 from rest_framework.response import Response
@@ -12,8 +13,7 @@ from lemmatize.models import Lemma, LemmaMeet
 class ProcessorsView(APIView):
     def get(self, request):
         data = {}
-        for processor in processors:
-            _id = processor.__name__
+        for _id, processor in processors.items():
             args = [{
                 'name': name,
                 'desc': desc,
@@ -27,6 +27,25 @@ class ProcessorsView(APIView):
                 'args': args
             }
         return Response(data)
+
+
+class Calc(APIView):
+    def post(self, request):
+        print(1)
+        data = json.loads(request.data['info'])
+
+        source = None
+
+        try:
+
+            for item in data:
+                processor_name = item.pop('processor')
+                Proc = processors[processor_name]
+                source = Proc(source, **item)
+        except Exception as e:
+            Response(exception=e)
+
+        return Response(list(source))
 
 
 class BaseDataView(APIView, metaclass=abc.ABCMeta):

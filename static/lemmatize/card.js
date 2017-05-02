@@ -1,16 +1,17 @@
 class ProcessorsDashBoard {
     constructor () {
-
+        this.cardId = 0;
     }
 
     init() {
         return new Promise((resolve, reject) => {
             this.div = $("#processors");
             this.firstButton = $("#add-proc-btn");
+            this.calcBtn = $("#calc-btn").on('click', () => {this.calc()});
             this.div.sortable({
-                        cancel: '.list-group',
-                        handle: '.card-block',
-                    });
+                cancel: '.list-group',
+                handle: '.card-block',
+            });
             this._getProcessors().then(
                 () => {
                     this._updateDropDowns();
@@ -65,8 +66,9 @@ class ProcessorsDashBoard {
     addProcessor(processorName) {
         let processor = this.processors[processorName];
 
-        this.div.prepend(processor.render());
+        this.div.prepend(processor.render(this.cardId));
 
+        this.cardId++;
     }
 
     _dropdownGenerate(position) {
@@ -84,6 +86,34 @@ class ProcessorsDashBoard {
 
         return items;
     }
+
+    getData() {
+        let cardIds = this.div.sortable("toArray");
+        let data = [];
+        for (let cardId of cardIds) {
+            data.push(ProcessorCard.getData($(`.card#${cardId}`)));
+        }
+        return data;
+    }
+
+    calc() {
+        $.post({
+            url: "/lemmatize/calc",
+            data: {
+                info: JSON.stringify(this.getData()),
+                csrfmiddlewaretoken: csrf_token
+            },
+            dataType: 'json',
+            success: (data) => {
+                draw(data);
+                console.log("draw", data);
+            },
+            error: (data) => {
+                console.log(data);
+                alert(`Error ${data.statusText}`);
+            }
+        })
+    }
 }
 
 class ProcessorCard {
@@ -99,7 +129,7 @@ class ProcessorCard {
         <li class="list-group-item">
             <div class="form-group">
                 <label for="input${arg.name}">${arg.desc}</label>
-                <input type="${arg.type}" class="form-control" id="input${arg.name}" placeholder="${arg.default || ''}">
+                <input type="${arg.type}" class="form-control" id="${arg.name}" placeholder="${arg.default || ''}">
             </div>
         </li>`)
     }
@@ -114,20 +144,31 @@ class ProcessorCard {
         return form;
     }
 
-    render(position) {
+    static getData(div) {
+        let data = {
+            processor: div.data("processor")
+        };
+        for (let el of div.find(".proc-arguments  input")) {
+            let $el = $(el);
+            data[$el.attr('id')] = $el.val();
+        }
+        return data;
+    }
+
+    render(cardId) {
         let card = $(`
-            <div class="card" data-position="${position}  ">
-                <div class="card-block">
-                    <h4 class="card-title">${this.name}</h4>
+            <div id="${cardId}" class="card" data-processor="${this.id}">
+                <div class="proc-header card-block">
+                    <h4 class="card-title">${this.name}
+                        <a href="#" class="close card-link text-danger text-right" data-action="delete">
+                            <span aria-hidden="true">&times;</span>
+                        </a>
+                    </h4>
                     <p class="card-text">${this.desc}</p>
                 </div>
-                <ul class="list-group list-group-flush">
+                <ul class="proc-arguments list-group list-group-flush">
                     <!-- Rendered Args -->
                 </ul>
-                <div class="card-block">
-                    <a href="#" class="card-link text-primary" data-action="calc">Calculate</a>
-                    <a href="#" class="card-link text-danger" data-action="delete">Delete</a>
-                </div>
             </div>`);
         card.find(".list-group").append(this._renderArgs());
         card.find("a").on('click', function () {

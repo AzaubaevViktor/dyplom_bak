@@ -8,17 +8,9 @@ api_urls = [
     url(r'processors$', views.ProcessorsView.as_view())
 ]
 
-api_data_source = [
-    # url(r'source$', views.Source.as_view()),
-    # url(r'source_diff$', views.SourceDiff.as_view()),
-    # url(r'sliding$', views.Sliding.as_view()),
-    # url(r'sliding_diff$', views.SlidingDiff.as_view()),
-    # url(r'sliding_diff_log$', views.SlidingDiffLog.as_view()),
-]
-
 
 urlpatterns = [
-    url(r'data/', include(api_data_source)),
+    url(r'calc$', views.Calc.as_view()),
     url(r'index$', views.main),
     url(r'api/', include(api_urls)),
 ]
