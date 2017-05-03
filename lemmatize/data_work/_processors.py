@@ -168,7 +168,7 @@ class Sliding(DataProcessor):
             return 0
         _x2 = _x * _x
 
-        return math.e ** (-_x2 / 0.4)
+        return math.e ** (-_x2 / 0.1)
 
     def __iter__(self):
         cache = [0] * self.steps
