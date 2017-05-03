@@ -16,3 +16,15 @@
 .card {
     margin-top: 0.5rem;
 }
+
+.card-block {
+    padding: 0.5rem;
+}
+
+.list-group-item {
+    padding: .5rem;
+}
+
+.form-group {
+    margin-bottom: .5rem;
+}

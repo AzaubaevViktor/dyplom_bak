@@ -37,13 +37,12 @@ class Calc(APIView):
         source = None
 
         try:
-
             for item in data:
                 processor_name = item.pop('processor')
                 Proc = processors[processor_name]
                 source = Proc(source, **item)
         except Exception as e:
-            Response(exception=e)
+            raise Response(exception=e)
 
         return Response(list(source))
 

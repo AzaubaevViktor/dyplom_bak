@@ -66,7 +66,7 @@ class ProcessorsDashBoard {
     addProcessor(processorName) {
         let processor = this.processors[processorName];
 
-        this.div.prepend(processor.render(this.cardId));
+        this.div.append(processor.render(this.cardId));
 
         this.cardId++;
     }
@@ -116,6 +116,11 @@ class ProcessorsDashBoard {
     }
 }
 
+let typesAssign = {
+    int: 'number',
+    str: 'text'
+};
+
 class ProcessorCard {
     constructor (_id, name, desc, args) {
         this.id = _id;
@@ -129,7 +134,7 @@ class ProcessorCard {
         <li class="list-group-item">
             <div class="form-group">
                 <label for="input${arg.name}">${arg.desc}</label>
-                <input type="${arg.type}" class="form-control" id="${arg.name}" placeholder="${arg.default || ''}">
+                <input type="${typesAssign[arg.type]}" class="form-control" id="${arg.name}" placeholder="${arg.default || ''}">
             </div>
         </li>`)
     }

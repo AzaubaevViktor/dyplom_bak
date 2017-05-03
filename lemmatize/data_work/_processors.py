@@ -1,6 +1,11 @@
 import abc
 from enum import Enum
-from typing import List, Tuple, Iterable, Type
+from math import pi
+from typing import List, Tuple, Iterable, Type, Callable
+
+import itertools
+
+import math
 
 from lemmatize.models import Lemma, LemmaMeet
 from ._types import DataEntry, Argument
@@ -37,8 +42,7 @@ class DataProcessor(metaclass=abc.ABCMeta):
 
     def _parse_args(self, **kwargs):
         for name, desc, _type in self.args:
-            value = kwargs[name]
-            assert isinstance(value, _type)
+            value = _type(kwargs[name])
             setattr(self, name, value)
 
     @abc.abstractmethod
@@ -48,7 +52,8 @@ class DataProcessor(metaclass=abc.ABCMeta):
     def pared_iter(self) -> Iterable[Tuple[DataEntry, DataEntry]]:
         prev = None
         for entry in iter(self):
-            yield prev, entry
+            if prev is not None:
+                yield prev, entry
             prev = entry
 
     @abc.abstractmethod
@@ -101,6 +106,94 @@ class Accumulation(DataProcessor):
         return len(self.source)
 
 
+@register
+class Diff(DataProcessor):
+    name = "Производная"
+    desc = "Считается производная"
+
+    def __iter__(self) -> Iterable[DataEntry]:
+        prev_ts = 0
+        for prev, cur in self.source.pared_iter():
+            if prev[0] != cur[0]:
+                prev_ts = prev[0]
+                yield (cur[0] + prev_ts) / 2, \
+                      (cur[1] - prev[1]) / (cur[0] - prev_ts)
+
+    def __len__(self):
+        return len(self.source) - 1
+
+
+@register
+class Sliding(DataProcessor):
+    name = "Скользящее окно"
+    desc = "Скользящее окно"
+    args = (
+        ('width', 'Ширина окна (сек)', int),
+        ('steps', 'Количество отсчётов', int),
+        ('function', 'Функция', int)
+    )
+
+    functions = ["_linear", "_wtf", "_normal"]
+
+    def __init__(self, source: 'DataProcessor', *args, **kwargs):
+        super().__init__(source, *args, **kwargs)
+        self.width2 = self.width / 2
+        self.step = self.width / self.steps
+        self.function = self.function or 0
+
+    @property
+    def _f(self) -> Callable:
+        return getattr(self,
+                       self.functions[self.function],
+                       )
+
+    def _linear(self, point: float, x: float):
+        """ Функция для учитывания окна """
+
+        v = abs(point - x) / self.width2
+
+        return 1 - min(v, 1)
+
+    def _wtf(self, point: float, x: float):
+        v = (x - point) / self.width2
+        if abs(v) > 1:
+            return 0
+        else:
+            return v
+
+    def _normal(self, point: float, x: float):
+        # e ^ (-x ^ 2 / 0.4) / 0.4 / root(2 * pi, 2)
+        _x = (point - x) / self.width2
+        if abs(_x) > 1:
+            return 0
+        _x2 = _x * _x
+
+        return math.e ** (-_x2 / 0.4)
+
+    def __iter__(self):
+        cache = [0] * self.steps
+        si = iter(self.source)
+
+        ts1, val1 = next(si)
+
+        start_ts = ts1 - self.width2
+        cur_step = 0
+
+        for ts, val in itertools.chain([(ts1, val1)], si):
+            while start_ts + cur_step * self.step < ts - self.width2:
+                yield start_ts + cur_step * self.step, cache.pop(0)
+                cache.append(0)
+                cur_step += 1
+
+            for s in range(cur_step, cur_step + self.steps):
+                cache[s - cur_step] += \
+                    val * self._f(start_ts + s * self.step, ts)
+
+        for i, v in enumerate(cache):
+            yield start_ts + (cur_step + i) * self.step, v
+
+    def __len__(self):
+        pass
 
 
 def accumulation(timestamps: List[int], **kwargs) -> List[Tuple[int, int]]:
@@ -185,27 +278,6 @@ def fixed(timestamps: List[Tuple[int, float]], dx=3600, **kwargs) -> List[Tuple[
                 )
                 cts += dx
 
-    except StopIteration:
-        pass
-
-    return data
-
-
-
-def diff(ts_val: List[Tuple[int, int]], **kwargs) -> List[Tuple[int, float]]:
-    data = []
-
-    prev_i = iter(ts_val)
-    cur_i = iter(ts_val)
-    next(cur_i)
-
-    try:
-        while True:
-            ts_p, prev = next(prev_i)
-            ts, cur = next(cur_i)
-
-            if ts != ts_p:
-                data.append((ts, (cur - prev) / (ts - ts_p)))
     except StopIteration:
         pass
 
