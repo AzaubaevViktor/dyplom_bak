@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from lemmatize.data_work import processors
+from lemmatize.data_work._processors import DataProcessorError
 from lemmatize.models import Lemma, LemmaMeet
 
 
@@ -41,8 +42,9 @@ class Calc(APIView):
                 processor_name = item.pop('processor')
                 Proc = processors[processor_name]
                 source = Proc(source, **item)
-        except Exception as e:
-            raise Response(exception=e)
+        except DataProcessorError as e:
+            return Response({"error": str(e),
+                             "processor": e.processor.__class__.__name__})
 
         return Response(list(source))
 

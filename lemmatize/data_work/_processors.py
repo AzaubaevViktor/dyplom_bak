@@ -1,7 +1,7 @@
 import abc
 from enum import Enum
 from math import pi
-from typing import List, Tuple, Iterable, Type, Callable
+from typing import List, Tuple, Iterable, Type, Callable, Dict
 
 import itertools
 
@@ -11,7 +11,7 @@ from lemmatize.models import Lemma, LemmaMeet
 from ._types import DataEntry, Argument
 
 
-processors = {}  # type: List[Type[DataProcessor]]
+processors = {}  # type: Dict[Type[str, DataProcessor]]
 
 
 def register(Class):
@@ -50,15 +50,18 @@ class DataProcessor(metaclass=abc.ABCMeta):
         pass
 
     def pared_iter(self) -> Iterable[Tuple[DataEntry, DataEntry]]:
-        prev = None
-        for entry in iter(self):
-            if prev is not None:
-                yield prev, entry
-            prev = entry
+        yield from self.last_iter(2)
 
-    @abc.abstractmethod
+    def last_iter(self, n: int) -> Iterable[Tuple[DataEntry, ...]]:
+        previous = []
+        for entry in iter(self):
+            previous.append(entry)
+            if len(previous) > n:
+                previous.pop(0)
+                yield tuple(previous)
+
     def __len__(self) -> int:
-        pass
+        return NotImplemented()
 
     def __str__(self):
         return "Source<{}>".format(self.name)
@@ -97,10 +100,12 @@ class Accumulation(DataProcessor):
 
     def __iter__(self) -> Iterable[DataEntry]:
         count = 0
+        prev_ts = None
         for cur in iter(self.source):
             count += cur[1]
-
-            yield cur[0], count
+            if prev_ts != cur[0]:
+                yield cur[0], count
+                prev_ts = cur[0]
 
     def __len__(self):
         return len(self.source)
@@ -124,28 +129,50 @@ class Diff(DataProcessor):
 
 
 @register
+class Approx(DataProcessor):
+    name = "Аппроксимация"
+    desc = "Преобразовывает временную сетку в стабильный вид"
+    args = (
+        ('step', 'Шаг сетки (сек)', int),
+    )
+
+    def __init__(self, source: 'DataProcessor', *args, **kwargs):
+        super().__init__(source, *args, **kwargs)
+
+    def __iter__(self) -> Iterable[DataEntry]:
+        def _calc(prev: DataEntry, cur: DataEntry) -> Tuple[float, float]:
+            dts = cur[0] - prev[0]
+            dv = cur[1] - prev[1]
+            return dv / dts, prev[1] - dv / dts * prev[0]
+
+        cur_ts = None
+
+        a = None
+        b = None
+        for prev, cur in self.source.pared_iter():
+            if cur_ts is None:
+                cur_ts = prev[0]
+
+            a, b = _calc(prev, cur)
+
+            while cur_ts < cur[0]:
+                yield cur_ts, a * cur_ts + b
+                cur_ts += self.step
+
+
+@register
 class Sliding(DataProcessor):
     name = "Скользящее окно"
     desc = "Скользящее окно"
     args = (
-        ('width', 'Ширина окна (сек)', int),
-        ('steps', 'Количество отсчётов', int),
-        ('function', 'Функция', int)
+        ("width", "Ширина (сек)", int),
+        ('steps', 'Количество шагов внутри окна', int)
     )
-
-    functions = ["_linear", "_wtf", "_normal"]
 
     def __init__(self, source: 'DataProcessor', *args, **kwargs):
         super().__init__(source, *args, **kwargs)
         self.width2 = self.width / 2
         self.step = self.width / self.steps
-        self.function = self.function or 0
-
-    @property
-    def _f(self) -> Callable:
-        return getattr(self,
-                       self.functions[self.function],
-                       )
 
     def _linear(self, point: float, x: float):
         """ Функция для учитывания окна """
@@ -153,22 +180,6 @@ class Sliding(DataProcessor):
         v = abs(point - x) / self.width2
 
         return 1 - min(v, 1)
-
-    def _wtf(self, point: float, x: float):
-        v = (x - point) / self.width2
-        if abs(v) > 1:
-            return 0
-        else:
-            return v
-
-    def _normal(self, point: float, x: float):
-        # e ^ (-x ^ 2 / 0.4) / 0.4 / root(2 * pi, 2)
-        _x = (point - x) / self.width2
-        if abs(_x) > 1:
-            return 0
-        _x2 = _x * _x
-
-        return math.e ** (-_x2 / 0.1)
 
     def __iter__(self):
         cache = [0] * self.steps
@@ -181,19 +192,47 @@ class Sliding(DataProcessor):
 
         for ts, val in itertools.chain([(ts1, val1)], si):
             while start_ts + cur_step * self.step < ts - self.width2:
-                yield start_ts + cur_step * self.step, cache.pop(0)
+                yield start_ts + cur_step * self.step, cache.pop(0) / self.width
                 cache.append(0)
                 cur_step += 1
 
             for s in range(cur_step, cur_step + self.steps):
                 cache[s - cur_step] += \
-                    val * self._f(start_ts + s * self.step, ts)
+                    val * self._linear(start_ts + s * self.step, ts)
 
         for i, v in enumerate(cache):
-            yield start_ts + (cur_step + i) * self.step, v
+            yield start_ts + (cur_step + i) * self.step, v / self.width
 
-    def __len__(self):
-        pass
+
+
+@register
+class ExponentSmooth(DataProcessor):
+    name = "Экспоненциальное сглаживание"
+    desc = "Экспоненциальное сглаживание (работает только с выровненными данными!)"
+    args = (
+        ('a', 'Параметр убывания', float),
+    )
+
+    def __init__(self, source: 'DataProcessor', *args, **kwargs):
+        super().__init__(source, *args, **kwargs)
+
+    def __iter__(self):
+        val = 0
+        for item in self.source:
+            val = item[1] * self.a + val * (1 - self.a)
+            yield item[0], val
+
+
+@register
+class PeriodicDiff(DataProcessor):
+    name = "Периодическое вычитание"
+    desc = "Вычитание лолкек"
+    args = (('step', 'Шаг вычитания', int),
+            )
+
+    def __iter__(self):
+        for items in self.source.last_iter(self.step + 1):
+            yield items[-1][0], items[-1][1] - items[0][1]
 
 
 def accumulation(timestamps: List[int], **kwargs) -> List[Tuple[int, int]]:

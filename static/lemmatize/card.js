@@ -105,12 +105,15 @@ class ProcessorsDashBoard {
             },
             dataType: 'json',
             success: (data) => {
+                if (data['error']) {
+                    console.log(data);
+                    alert(`Error ${data.error}; Processor ${data.processor}`);
+                }
                 draw(data);
                 console.log("draw", data);
             },
             error: (data) => {
-                console.log(data);
-                alert(`Error ${data.statusText}`);
+
             }
         })
     }
