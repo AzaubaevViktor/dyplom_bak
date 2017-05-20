@@ -18,7 +18,14 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 
+from .view import load_state, main, word, words, settings as sett
+
 urlpatterns = [
+    url(r'^$', main),
+    url(r'^load_state$', load_state),
+    url(r'^words$', words),
+    url(r'^word$', word),
+    url(r'^settings$', sett),
     url(r'^admin/', admin.site.urls),
     url(r'^lemmatize/', include('lemmatize.urls')),
     url(r'^timing/', include('timing.urls'))

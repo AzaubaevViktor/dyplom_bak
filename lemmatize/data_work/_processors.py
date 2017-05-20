@@ -1,4 +1,5 @@
 import abc
+from datetime import date
 from enum import Enum
 from math import pi
 from typing import List, Tuple, Iterable, Type, Callable, Dict
@@ -12,6 +13,9 @@ from ._types import DataEntry, Argument
 
 
 processors = {}  # type: Dict[Type[str, DataProcessor]]
+
+
+day = 60 * 60 * 24
 
 
 def register(Class):
@@ -81,7 +85,10 @@ class LemmaMeetSource(DataProcessor):
                                      'Данный источник может быть только первым')
 
         self._lemma = Lemma.objects.get(name=self.lemma_name)
-        self._meets = LemmaMeet.objects.filter(lemma=self._lemma).order_by(
+        self._meets = LemmaMeet.objects.filter(
+            lemma=self._lemma,
+            # timestamp__gt=1462060800
+        ).order_by(
             "timestamp")
         self._len = self._meets.count()
 
@@ -122,7 +129,7 @@ class Diff(DataProcessor):
             if prev[0] != cur[0]:
                 prev_ts = prev[0]
                 yield (cur[0] + prev_ts) / 2, \
-                      (cur[1] - prev[1]) / (cur[0] - prev_ts)
+                      (cur[1] - prev[1]) / (cur[0] - prev_ts) * day
 
     def __len__(self):
         return len(self.source) - 1
@@ -192,7 +199,7 @@ class Sliding(DataProcessor):
 
         for ts, val in itertools.chain([(ts1, val1)], si):
             while start_ts + cur_step * self.step < ts - self.width2:
-                yield start_ts + cur_step * self.step, cache.pop(0) / self.width
+                yield start_ts + cur_step * self.step, cache.pop(0) / self.width * day
                 cache.append(0)
                 cur_step += 1
 
@@ -201,7 +208,7 @@ class Sliding(DataProcessor):
                     val * self._linear(start_ts + s * self.step, ts)
 
         for i, v in enumerate(cache):
-            yield start_ts + (cur_step + i) * self.step, v / self.width
+            yield start_ts + (cur_step + i) * self.step, v / self.width * day
 
 
 
